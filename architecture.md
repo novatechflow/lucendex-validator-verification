@@ -27,7 +27,7 @@ Below updates adapt the previously drafted architecture to Lucendex's **neutral 
 
    * Router adds a small **routing fee (bps)**; included in the quote and the **QuoteHash** so it's tamper-evident.
 
-5. **UI remains thin‑trade demo**
+5. **UI remains thin-trade demo**
 
    * No LP UI, no listings admin, no charts in V1.
    * Prominent label: *"Demo client — production partners use the Partner API"*.
@@ -64,6 +64,7 @@ flowchart TD
     subgraph XRPL["XRPL Infrastructure"]
         R1["rippled API Node"]
         R2["rippled Full-History Node"]
+        V1["XRPL Validator (Lucendex-operated)<br/>Independent & audited"]
     end
 
     U --> FE1
@@ -83,6 +84,7 @@ flowchart TD
     ROUTER --> R1
     IDX --> R2
     R1 <--> R2
+    R2 --> V1
 ```
 
 ---
@@ -180,7 +182,40 @@ type QuoteResp struct {
 
 ---
 
-### E. Security & Ops Additions
+### E. XRPL Validator Infrastructure
+
+Lucendex will operate **one independent XRPL validator**, complementing its rippled nodes.
+
+**Objectives:**
+
+* Contribute to XRPL decentralization and transparency.
+* Enable cryptographically signed ledger checkpoints for audit artifacts.
+* Provide low-latency ledger data and reduce dependency on public nodes.
+
+**Setup:**
+
+| Component                | Purpose                               | Hosting                     | Security Notes                                     |
+| ------------------------ | ------------------------------------- | --------------------------- | -------------------------------------------------- |
+| `rippled` (API Node)     | Ledger sync + read ops                | Cloud VM / bare metal       | RPC restricted to internal network                 |
+| `rippled` (Full-History) | Local AMM/orderbook replay            | Separate VM                 | Read-only, high-disk IOPS                          |
+| `Validator`              | Ledger validation + signing           | Separate provider or region | Offline keypair, validator token rotated quarterly |
+| `Monitoring`             | Metrics, lag detection, desync alerts | Prometheus + Grafana        | Self-healing ops via agent scripts                 |
+
+**Cost Model (monthly est.):**
+
+| Item                         | Est. Cost (USD)      |
+| ---------------------------- | -------------------- |
+| Compute (4 vCPU / 8GB RAM)   | $80–120              |
+| Storage (500GB SSD + growth) | $20                  |
+| Bandwidth (1–2 TB)           | $10–30               |
+| Monitoring & backups         | $10–20               |
+| **Total**                    | **≈ $150–200/month** |
+
+Validator metrics integrate with the Partner API’s `/health` endpoint, so partner systems can assess **ledger freshness** and **validator participation** in real time.
+
+---
+
+### F. Security & Ops Additions
 
 * Relay off by default; direct wallet submit is the recommended path.
 * Per-partner SLO metrics (Prometheus labels by `partner_id`).
@@ -190,10 +225,11 @@ type QuoteResp struct {
 
 ---
 
-### F. Revised Milestones (focused)
+### G. Revised Milestones (focused)
 
 * **M0:** rippled node + indexer streaming (no UI yet)
 * **M1:** DB schema + router quoting + deterministic fees
-* **M2:** Public endpoints + thin‑trade demo (wallet sign & direct submit)
+* **M2:** Public endpoints + thin-trade demo (wallet sign & direct submit)
 * **M3:** Partner API (auth, quotas, metering, SLOs); relay optional-only
-* **M4:** 2 pilot integrations (wallet + fund); polish ops
+* **M4:** XRPL validator live + health metrics integration
+* **M5:** 2 pilot integrations (wallet + fund); polish ops
