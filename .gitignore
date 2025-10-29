@@ -63,3 +63,21 @@ out/
 tmp/
 temp/
 *.tmp
+
+# Infrastructure (Terraform & secrets)
+infra/*/terraform/.terraform/
+infra/*/terraform/.terraform.lock.hcl
+infra/*/terraform/*.tfstate
+infra/*/terraform/*.tfstate.backup
+infra/*/terraform/tfplan
+infra/*/terraform/.envrc
+infra/*/terraform/*_ssh_key
+infra/*/terraform/*_ssh_key.pub
+infra/*/backups/
+infra/*/.envrc.cloudflare
+infra/*/lucendex-validator-verification/
+
+# Validator keys and tokens
+*.key
+*.token
+validator-keys.json

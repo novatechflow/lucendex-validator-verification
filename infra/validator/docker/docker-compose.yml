@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  rippled:
+    image: rippleci/rippled:latest
+    container_name: rippled
+    hostname: xrpl-validator
+    restart: unless-stopped
+    
+    # Security hardening
+    read_only: false  # rippled needs to write to database
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    
+    # Resource limits
+    mem_limit: 6g
+    mem_reservation: 4g
+    cpus: 3.5
+    
+    # Ports
+    ports:
+      - "51235:51235"     # Peer protocol
+      - "127.0.0.1:5005:5005"   # Admin RPC (localhost only)
+      - "127.0.0.1:6006:6006"   # WebSocket (localhost only)
+    
+    # Volumes
+    volumes:
+      - ./rippled.cfg:/etc/opt/ripple/rippled.cfg:ro
+      - rippled-data:/var/lib/rippled
+      - rippled-db:/var/lib/rippled/db
+      - rippled-log:/var/log/rippled
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    
+    # Health check - DISABLED to debug restart issue
+    # healthcheck:
+    #   test: ["CMD", "/opt/ripple/bin/rippled", "--conf", "/etc/opt/ripple/rippled.cfg", "server_info"]
+    #   interval: 60s
+    #   timeout: 30s
+    #   retries: 5
+    #   start_period: 120s
+    
+    # Environment
+    environment:
+      - TZ=UTC
+
+volumes:
+  rippled-data:
+    driver: local
+  rippled-db:
+    driver: local
+  rippled-log:
+    driver: local
