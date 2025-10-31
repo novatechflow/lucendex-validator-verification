@@ -1,0 +1,191 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"flag"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/lucendex/backend/internal/parser"
+	"github.com/lucendex/backend/internal/store"
+	"github.com/lucendex/backend/internal/xrpl"
+)
+
+var (
+	rippledWS = flag.String("rippled-ws", getEnv("RIPPLED_WS", "ws://localhost:6006"), "rippled Full-History WebSocket URL")
+	dbConnStr = flag.String("db", getEnv("DATABASE_URL", ""), "PostgreSQL connection string")
+)
+
+// getEnv retrieves environment variable or returns default
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func main() {
+	flag.Parse()
+	
+	log.Printf("Starting Lucendex Indexer")
+	log.Printf("Rippled WS: %s", *rippledWS)
+	
+	// Validate required configuration
+	if *dbConnStr == "" {
+		log.Fatal("DATABASE_URL environment variable or -db flag is required")
+	}
+	
+	// Connect to database
+	log.Printf("Connecting to database...")
+	db, err := store.NewStore(*dbConnStr)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+	log.Printf("✓ Database connected")
+	
+	// Check for last checkpoint
+	ctx := context.Background()
+	checkpoint, err := db.GetLastCheckpoint(ctx)
+	if err != nil {
+		log.Fatalf("Failed to get last checkpoint: %v", err)
+	}
+	
+	if checkpoint != nil {
+		log.Printf("Found checkpoint at ledger %d (hash: %s)", checkpoint.LedgerIndex, checkpoint.LedgerHash)
+		log.Printf("Indexer will resume from this point")
+	} else {
+		log.Printf("No checkpoint found - starting from beginning")
+	}
+	
+	// Connect to rippled
+	log.Printf("Connecting to rippled...")
+	client := xrpl.NewClient(*rippledWS)
+	
+	if err := client.Connect(); err != nil {
+		log.Fatalf("Failed to connect to rippled: %v", err)
+	}
+	defer client.Close()
+	log.Printf("✓ Connected to rippled")
+	
+	// Subscribe to ledger stream
+	if err := client.Subscribe(); err != nil {
+		log.Fatalf("Failed to subscribe to ledger stream: %v", err)
+	}
+	log.Printf("✓ Subscribed to ledger stream")
+	
+	// Create parsers
+	ammParser := parser.NewAMMParser()
+	orderbookParser := parser.NewOrderbookParser()
+	
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	
+	log.Printf("✓ Indexer running - waiting for ledgers...")
+	
+	// Main processing loop
+	for {
+		select {
+		case <-sigChan:
+			log.Printf("Shutdown signal received - closing gracefully")
+			return
+			
+		case err := <-client.ErrorChan():
+			log.Printf("Error from rippled client: %v", err)
+			
+		case ledger := <-client.LedgerChan():
+			if err := processLedger(ctx, db, ledger, ammParser, orderbookParser); err != nil {
+				log.Printf("Error processing ledger %d: %v", ledger.LedgerIndex, err)
+			}
+		}
+	}
+}
+
+// processLedger processes a single ledger
+func processLedger(
+	ctx context.Context,
+	db *store.Store,
+	ledger *xrpl.LedgerResponse,
+	ammParser *parser.AMMParser,
+	orderbookParser *parser.OrderbookParser,
+) error {
+	start := time.Now()
+	
+	log.Printf("Processing ledger %d (hash: %s, txns: %d)", 
+		ledger.LedgerIndex, ledger.LedgerHash, ledger.TxnCount)
+	
+	// Process each transaction
+	for _, tx := range ledger.Transactions {
+		// Convert transaction to map for parser
+		txMap := make(map[string]interface{})
+		txBytes, err := json.Marshal(tx)
+		if err != nil {
+			log.Printf("Failed to marshal transaction: %v", err)
+			continue
+		}
+		
+		if err := json.Unmarshal(txBytes, &txMap); err != nil {
+			log.Printf("Failed to unmarshal transaction: %v", err)
+			continue
+		}
+		
+		// Try AMM parser
+		if pool, err := ammParser.ParseTransaction(txMap, ledger.LedgerIndex, ledger.LedgerHash); err != nil {
+			log.Printf("AMM parser error on tx %s: %v", tx.Hash, err)
+		} else if pool != nil {
+			if err := db.UpsertAMMPool(ctx, pool); err != nil {
+				log.Printf("Failed to upsert AMM pool: %v", err)
+			} else {
+				log.Printf("  ✓ AMM pool updated: %s/%s", pool.Asset1, pool.Asset2)
+			}
+		}
+		
+		// Try orderbook parser
+		if offer, err := orderbookParser.ParseTransaction(txMap, ledger.LedgerIndex, ledger.LedgerHash); err != nil {
+			log.Printf("Orderbook parser error on tx %s: %v", tx.Hash, err)
+		} else if offer != nil {
+			if err := db.UpsertOffer(ctx, offer); err != nil {
+				log.Printf("Failed to upsert offer: %v", err)
+			} else {
+				log.Printf("  ✓ Offer created: %s/%s @ %s", offer.BaseAsset, offer.QuoteAsset, offer.Price)
+			}
+		}
+		
+		// Check for OfferCancel
+		if tx.TransactionType == "OfferCancel" {
+			account, seq, err := orderbookParser.ParseOfferCancel(txMap)
+			if err != nil {
+				log.Printf("Failed to parse OfferCancel: %v", err)
+			} else {
+				if err := db.CancelOffer(ctx, account, seq, int64(ledger.LedgerIndex)); err != nil {
+					log.Printf("Failed to cancel offer: %v", err)
+				} else {
+					log.Printf("  ✓ Offer cancelled: account=%s seq=%d", account, seq)
+				}
+			}
+		}
+	}
+	
+	// Save checkpoint
+	duration := time.Since(start)
+	checkpoint := &store.LedgerCheckpoint{
+		LedgerIndex:          int64(ledger.LedgerIndex),
+		LedgerHash:           ledger.LedgerHash,
+		CloseTime:            int64(ledger.LedgerTime),
+		CloseTimeHuman:       time.Unix(int64(ledger.LedgerTime)+946684800, 0), // Ripple epoch to Unix
+		TransactionCount:     ledger.TxnCount,
+		ProcessingDurationMs: int(duration.Milliseconds()),
+	}
+	
+	if err := db.SaveCheckpoint(ctx, checkpoint); err != nil {
+		return err
+	}
+	
+	log.Printf("✓ Ledger %d indexed in %v", ledger.LedgerIndex, duration)
+	return nil
+}

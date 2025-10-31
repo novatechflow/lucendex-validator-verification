@@ -1,0 +1,21 @@
+# Vultr API Configuration
+# Copy this file to .envrc and add your actual values
+# Then run: direnv allow
+
+export VULTR_API_KEY="your_vultr_api_key_here"
+export TF_VAR_vultr_api_key="${VULTR_API_KEY}"
+
+# Database Passwords (REQUIRED - use strong passwords)
+export TF_VAR_postgres_password="change_me_secure_password"
+export TF_VAR_indexer_db_password="change_me_secure_password"
+export TF_VAR_router_db_password="change_me_secure_password"
+export TF_VAR_api_db_password="change_me_secure_password"
+
+# Optional: Restrict SSH to your IP
+# export TF_VAR_admin_ip="your.ip.address.here"
+
+# Optional: Change region (default: Frankfurt)
+# export TF_VAR_region="fra"
+
+# Optional: Change environment
+# export TF_VAR_environment="production"

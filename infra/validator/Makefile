@@ -31,17 +31,7 @@ logs: ## View rippled logs (follow mode)
 logs-tail: ## View last 100 lines of rippled logs
 	@$(SSH_CMD) "docker logs --tail 100 rippled"
 
-health: ## Check validator health
-	@echo "Validator Health Check"
-	@echo "====================="
-	@echo "Server State:"
-	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info" | jq -r '.result.info.server_state'
-	@echo ""
-	@echo "Ledger Index:"
-	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info" | jq -r '.result.info.validated_ledger.seq'
-	@echo ""
-	@echo "Peer Count:"
-	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled peers" | jq '.result.peers | length'
+# Removed: health (duplicates sync-status)
 
 peers: ## Show connected peers
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled peers" | jq -e '.result.peers[]? | {address, type, version}' || echo "No peer data available (rippled may still be starting)"
@@ -49,8 +39,7 @@ peers: ## Show connected peers
 consensus: ## Show consensus participation
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled consensus_info"
 
-ledger: ## Show current ledger info
-	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info" | jq '.result.info.validated_ledger'
+# Removed: ledger (duplicates sync-status)
 
 restart: ## Restart rippled container
 	@echo "Restarting rippled..."
@@ -77,8 +66,7 @@ resources: ## Check VM resource usage
 	@echo "Docker Stats:"
 	@$(SSH_CMD) "docker stats --no-stream rippled"
 
-disk: ## Check disk usage
-	@$(SSH_CMD) "df -h"
+# Removed: disk (duplicates resources command)
 
 updates: ## Check for system updates
 	@echo "Checking for updates..."
@@ -125,35 +113,8 @@ clean: ## Clean local artifacts
 	@rm -f terraform/tfplan
 	@echo "✓ Local artifacts cleaned"
 
-validator-keys: ## Show validator public key
-	@echo "Fetching validator public key from rippled.cfg..."
-	@$(SSH_CMD) "grep '^n9' /opt/rippled/rippled.cfg | head -1 | awk '{print \$1}'"
-
-validator-id: ## Show validator ID (public key)
-	@echo "Validator ID (Public Key):"
-	@$(SSH_CMD) "grep '^n9' /opt/rippled/rippled.cfg | head -1 | awk '{print \$1}'"
-	@echo ""
-	@echo "Validation Seed (Secret - DO NOT SHARE):"
-	@$(SSH_CMD) "grep -A 1 '^\[validation_seed\]' /opt/rippled/rippled.cfg | tail -1"
-	@echo ""
-	@echo "Use public key for:"
-	@echo "  - UNL registration"
-	@echo "  - DNS TXT record (xrpl-validator-public-key.lucendex.com)"
-
-get-config: ## Get full rippled configuration
-	@echo "=== rippled.cfg ==="
-	@$(SSH_CMD) "cat /opt/rippled/rippled.cfg"
-
-get-pubkey: ## Get validator public key only (from API)
-	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info 2>/dev/null | jq -r '.result.info.pubkey_validator // empty'"
-
-get-seed: ## Get validation seed from config (PRIVATE!)
-	@echo "⚠️  WARNING: This is your PRIVATE validation seed!"
-	@echo "⚠️  NEVER share this with anyone!"
-	@echo ""
-	@$(SSH_CMD) "grep -A 1 '^\[validation_seed\]' /opt/rippled/rippled.cfg 2>/dev/null | tail -1 | xargs || echo 'No validation_seed in config (validator in tracking mode)'"
-
-get-keys: ## Get both public key and seed
+# Consolidated key management commands
+keys: ## Show validator keys (public key + seed)
 	@echo "=== Validator Keys ==="
 	@echo ""
 	@echo "Public Key (from running validator):"
@@ -162,8 +123,13 @@ get-keys: ## Get both public key and seed
 	@echo "Validation Seed (from config - ⚠️  PRIVATE!):"
 	@$(SSH_CMD) "grep -A 1 '^\[validation_seed\]' /opt/rippled/rippled.cfg 2>/dev/null | tail -1 | xargs || echo 'No validation_seed in config'"
 	@echo ""
-	@echo "Note: If no seed in config, validator is in tracking mode (not validating)"
+	@echo "Use public key for UNL registration & DNS TXT record"
+	@echo "⚠️  NEVER share the validation seed!"
 	@echo ""
+
+config: ## Show full rippled configuration
+	@echo "=== rippled.cfg ==="
+	@$(SSH_CMD) "cat /opt/rippled/rippled.cfg"
 
 version: ## Show rippled version
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled --version"

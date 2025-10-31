@@ -23,9 +23,12 @@ services:
       - SETGID
       - SETUID
     
-    # Resource limits
-    mem_limit: 6g
+    # Resource limits - OPTIMIZED for sync phase
+    # Increased to 7.5GB to prevent swapping during initial sync
+    # Can reduce back to 6GB after sync completes
+    mem_limit: 7500m
     mem_reservation: 4g
+    memswap_limit: 8500m
     cpus: 3.5
     
     # Ports

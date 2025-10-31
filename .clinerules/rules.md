@@ -40,3 +40,11 @@
 - No frameworks unless justified
 - Direct database queries over ORMs
 - Flat is better than nested
+
+## 6. Brief Communication
+**Keep messages short and to the point.**
+
+- Use concise completion messages
+- Avoid verbose explanations unless requested
+- Get to the solution quickly
+- Respect the user's time
