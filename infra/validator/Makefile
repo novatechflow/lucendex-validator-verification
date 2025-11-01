@@ -36,6 +36,13 @@ logs-tail: ## View last 100 lines of rippled logs
 peers: ## Show connected peers
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled peers" | jq -e '.result.peers[]? | {address, type, version}' || echo "No peer data available (rippled may still be starting)"
 
+validators: ## Show validator list (UNL) status
+	@echo "=== Validator List (UNL) Status ==="
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled validators" | jq '{status: .result.validator_list.status, expiration: .result.validator_list.expiration, count: .result.validator_list.count, quorum: .result.validation_quorum}'
+
+logs-startup: ## View first 200 lines of logs (startup)
+	@$(SSH_CMD) "docker logs rippled 2>&1 | head -200"
+
 consensus: ## Show consensus participation
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled consensus_info"
 
@@ -97,6 +104,18 @@ update-config: ## Update rippled configuration
 
 verify-image: ## Verify rippled Docker image authenticity
 	@./scripts/verify-rippled-image.sh
+
+# Validator keys management (production)
+build-validator-keys: ## Build validator-keys tool (one-time, 2-3 min)
+	@./scripts/build-validator-keys-tool.sh
+
+generate-keys: ## Generate production validator keys + token
+	@./scripts/generate-validator-token.sh
+
+deploy-keys: ## Deploy validator keys to server (automated)
+	@./scripts/deploy-validator-keys.sh
+
+rotate-keys: build-validator-keys generate-keys deploy-keys ## Complete key rotation workflow
 
 deploy: ## Run deployment script
 	@./deploy.sh

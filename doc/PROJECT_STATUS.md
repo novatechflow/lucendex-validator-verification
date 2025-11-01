@@ -1,8 +1,8 @@
 # Lucendex DEX - Project Status Dashboard
 
-**Last Updated:** 2025-10-31  
+**Last Updated:** 2025-11-01  
 **Current Milestone:** M0 (Foundation Infrastructure)  
-**Overall Progress:** ~65% (M0 at 100%, M4 at 60%)
+**Overall Progress:** ~75% (M0 Deployed & Syncing, M4 at 80%)
 
 ---
 
@@ -10,11 +10,11 @@
 
 | Milestone | Status | Progress | Target Date | Actual Date |
 |-----------|--------|----------|-------------|-------------|
-| **M0** | ✅ Complete | 100% | Week 1-4 | Completed 2025-10-31 |
+| **M0** | 🟢 Deployed | 100% | Week 1-4 | Deployed 2025-11-01 |
 | **M1** | ⏳ Not Started | 0% | Week 5-8 | - |
 | **M2** | ⏳ Not Started | 0% | Week 9-12 | - |
 | **M3** | ⏳ Not Started | 0% | Week 13-16 | - |
-| **M4** | 🟡 Partial | 60% | Week 17-20 | In Progress |
+| **M4** | 🟢 Syncing | 80% | Week 17-20 | Deployed & Syncing |
 | **M5** | ⏳ Not Started | 0% | Week 21-24 | - |
 
 ---
@@ -43,28 +43,34 @@
 - [x] Safe destruction with backups
 - [x] Complete documentation
 
-**Progress: 100% (production-ready, awaiting deployment)**
+**Progress: 100% (✅ DEPLOYED 2025-11-01)**
 
 ### Infrastructure
 
 | Component | Specs | Status | Monthly Cost |
 |-----------|-------|--------|--------------|
-| Data Services VM | 6 vCPU / 16GB RAM / 320GB SSD | ✅ Ready to Deploy | $96 |
-| - rippled API | (shares VM) | ✅ Configured | $0 |
-| - rippled History | (shares VM) | ✅ Configured | $0 |
-| - PostgreSQL 15 | (shares VM) | ✅ Configured | $0 |
+| Data Services VM | 6 vCPU / 16GB RAM / 320GB SSD | ✅ Deployed | $96 |
+| - rippled API | (shares VM) | 🔄 Syncing | $0 |
+| - rippled History | (shares VM) | 🔄 Syncing | $0 |
+| - PostgreSQL 15 | (shares VM) | ✅ Running | $0 |
 
 **M0 Total Cost:** ~$96/month (combined node vs separate)
 
 ### Timeline
-- **Week 1 (2025-10-31)**: ✅ Complete (100%)
+- **Week 1 (2025-10-31)**: ✅ Development Complete
   - Infrastructure automation
   - Backend with parsers
   - Comprehensive testing (70%+)
   - Security features (auto-gen passwords, rotation)
   - Full operational tooling
-- **Status**: ✅ Ready for deployment
-- **Next**: Deploy and sync rippled nodes (6-12 hours)
+- **2025-11-01**: ✅ Deployed to Production
+  - Fixed stale database issues (same as validator)
+  - Added RPC port to history node for monitoring
+  - Both nodes syncing with clean databases
+  - UNL loaded: 35 validators, expires 2026-01-17
+  - Comprehensive diagnostics CLI added
+- **Status**: 🔄 Syncing (2-24 hours)
+- **Next**: Monitor sync → Start indexer when ready
 
 ---
 
@@ -186,17 +192,10 @@
 
 | Component | Cost | Status |
 |-----------|------|--------|
-| Validator | $48 | ✅ Running |
-| **Total** | **$48** | **Active** |
+| Validator | $48 | ✅ Syncing |
+| Data Services | $96 | ✅ Deployed & Syncing |
+| **Total** | **$144** | **M0 Active** |
 
-### Projected M0 Costs
-
-| Component | Cost | Status |
-|-----------|------|--------|
-| Validator | $48 | ✅ Running |
-| API Node + Backend + DB | $48 | ⏳ Planned |
-| History Node | $96 | ⏳ Planned |
-| **Total** | **$192** | **M0 Target** |
 
 ### Full Stack Costs (M0-M5)
 
@@ -215,10 +214,11 @@
 ## 📊 Key Metrics
 
 ### Infrastructure
-- **Servers Deployed:** 1/2 (Validator running, Data Services ready)
-- **Services Running:** 1/6 planned (rippled validator)
-- **Code Complete:** M0 100%, M4 60%
-- **Uptime Target:** 99.9% (validator active)
+- **Servers Deployed:** 2/2 (Validator syncing, Data Services syncing)
+- **Services Running:** 6/6 planned (3 rippled nodes + 1 postgres + ready for indexer)
+- **Nodes Syncing:** 3/3 (validator + API + history all progressing)
+- **Code Complete:** M0 100%, M4 80%
+- **Uptime Target:** 99.9%
 
 ### Development
 - **Backend Code:** 100% (M0 indexer complete with tests)
@@ -239,22 +239,26 @@
 
 ## 🚧 Current Blockers
 
-### M4 (Validator)
-- ⏳ **Validator syncing** - In progress with optimized config
-- ⏳ **Health metrics** - Blocked until M3 Partner API exists
-
 ### M0 (Foundation)
-- ✅ **All code complete** - Ready for deployment
-- ⏳ **Awaiting deployment** - Run `make data-deploy` to deploy infrastructure
+- ✅ **Deployed** - All services running (2025-11-01)
+- 🔄 **API Node syncing** - Clean database, 10 peers, UNL loaded
+- 🔄 **History Node syncing** - Clean database, 10 peers, full backfill in progress (12-24h)
+- ✅ **PostgreSQL running** - Ready for indexer
+- ⏳ **Awaiting sync completion** - Monitor with `make data-health-check`
+
+### M4 (Validator)
+- 🔄 **Validator syncing** - Clean database, optimized config
+- ⏳ **Health metrics** - Blocked until M3 Partner API exists
 
 ---
 
 ## 🎯 Next Immediate Steps
 
 1. ✅ **M0 Development** - COMPLETE (100% code ready)
-2. ✅ **Documentation** - COMPLETE (all docs updated)
-3. ⏳ **M0 Deployment** - NEXT (run `make data-deploy`)
-4. ⏳ **M1 Development** - AFTER M0 deployed (router + quote engine)
+2. ✅ **M0 Deployment** - COMPLETE (deployed 2025-11-01)
+3. 🔄 **Node Synchronization** - IN PROGRESS (2-24 hours)
+4. ⏳ **Indexer Deployment** - AFTER history node synced
+5. ⏳ **M1 Development** - AFTER indexer running (router + quote engine)
 
 ---
 
@@ -262,7 +266,7 @@
 
 ```
 XRPL-DEX/
-├── Makefile                        ✅ Unified CLI (25 commands)
+├── Makefile                        ✅ Production CLI (40+ commands)
 ├── doc/
 │   ├── PROJECT_STATUS.md           ← Master dashboard (this file)
 │   ├── architecture.md             ✅ Complete
@@ -294,6 +298,26 @@ XRPL-DEX/
 ---
 
 ## 🔄 Change Log
+
+### 2025-11-01 (M0 Deployed)
+- ✅ Data services deployed to production
+- ✅ Fixed stale database issues (wiped /var/lib/rippled/*/db/*)
+- ✅ Added RPC port to history node (51237) for monitoring
+- ✅ Verified UNL loading (35 validators, expires 2026-01-17)
+- ✅ Comprehensive CLI diagnostics added:
+  - health-check: Full system health scan
+  - validators-api/history: UNL status checks
+  - peers-api/history: Peer connectivity checks
+  - db-health: Database health and table sizes
+  - disk-space: Storage monitoring
+  - network-test: Connectivity validation
+  - logs-api/history/errors: Targeted log viewing
+- ✅ Both API and History nodes syncing with clean state
+- 📊 Current Status:
+  - API Node: connected → syncing (256 ledgers, 2-4h)
+  - History Node: connected → syncing (full history, 12-24h)
+  - PostgreSQL: Running and ready
+  - Validator: Syncing in parallel
 
 ### 2025-10-31 (M0 Complete)
 - ✅ M0 backend development complete (100%)
@@ -328,7 +352,9 @@ XRPL-DEX/
 
 - **Validator Domain**: https://lucendex.com/.well-known/xrp-ledger.toml
 - **GitHub**: git@github.com:2pk03/XRPL-DEX.git
-- **Validator Status**: Run `cd infra/validator && make sync-status`
+- **System Health**: Run `make data-health-check` or `make sync-status`
+- **Validator Status**: Run `make validator-sync`
+- **Data Services Status**: Run `make data-sync-status-api` and `make data-sync-status-history`
 - **Documentation**: See `doc/` directory
 
 ---

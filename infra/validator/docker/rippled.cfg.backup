@@ -1,45 +1,45 @@
-# rippled.cfg - XRPL Full-History Node Configuration
-# Lucendex Data Services - Full-History Node
-# Optimized for: Complete ledger history, indexer feed via WebSocket
-# Resources: Shares 6 vCPU / 16GB RAM / 320GB SSD
+# rippled.cfg - XRPL Validator Configuration
+# Lucendex Production Validator
+# Optimized for: 4 vCPU / 8GB RAM / 160GB SSD
 
 [server]
-port_rpc
-port_ws_public
+port_rpc_admin_local
 port_peer
+port_ws_admin_local
 
-[port_rpc]
-port = 51237
+[port_rpc_admin_local]
+port = 5005
 ip = 127.0.0.1
 admin = 127.0.0.1
 protocol = http
 
-[port_ws_public]
+[port_peer]
+port = 51235
+ip = 0.0.0.0
+protocol = peer
+
+[port_ws_admin_local]
 port = 6006
 ip = 127.0.0.1
 admin = 127.0.0.1
 protocol = ws
 
-[port_peer]
-port = 51236
-ip = 0.0.0.0
-protocol = peer
-
 #-------------------------------------------------------------------------------
 
 [node_size]
-# medium for 16GB RAM full-history role
-medium
+# OPTIMIZED: small for 8GB RAM validator role
+# (huge requires 32-64GB RAM and is for serving nodes, not validators)
+small
 
 [ledger_history]
-# full = unlimited history (critical for indexer)
-full
+# Keep recent 256 ledgers for validation
+256
 
-[fetch_depth]
-# full = backfill to genesis (required for complete history)
-full
+# REMOVED: fetch_depth = full
+# Reason: Don't serve unlimited history during sync (starves resources)
 
 [validation_quorum]
+# Minimum validations required (default: 3)
 3
 
 #-------------------------------------------------------------------------------
@@ -48,8 +48,11 @@ full
 type=NuDB
 path=/var/lib/rippled/db/nudb
 advisory_delete=0
-# online_delete disabled for full-history node
-# Must keep all ledgers
+online_delete=512
+# TEMPORARY: Reduced from 2000 to 512 during initial sync
+# Will restore to 2000 after reaching tip
+# REMOVED: earliest_seq=32570
+# Reason: Don't force backfill to ancient ledgers on 8GB RAM
 
 [database_path]
 /var/lib/rippled/db
@@ -65,10 +68,15 @@ pool.ntp.org
 
 #-------------------------------------------------------------------------------
 
+# Use online validator list (UNL) instead of static file
 [validator_list_sites]
 https://vl.ripple.com
+https://unl.xrplf.org
 
 [validator_list_keys]
+# XRPL Foundation (primary)
+ED42AEC58B701EEBB77356FFFEC26F83C1F0407263530F068C7C73D392C7E06FD1
+# Ripple (legacy)
 ED2677ABFFD1B33AC6FBC3062B71F1E8397C1505E1C42C64D11AD1B28FF73F4734
 
 [ips]
@@ -82,7 +90,7 @@ sahyadri.isrdc.in 51235
 #-------------------------------------------------------------------------------
 
 [rpc_startup]
-{ "command": "log_level", "severity": "info" }
+{ "command": "log_level", "severity": "warning" }
 
 [ssl_verify]
 1
@@ -95,7 +103,7 @@ sahyadri.isrdc.in 51235
 
 #-------------------------------------------------------------------------------
 
-# Performance tuning for history storage (6 vCPU shared)
+# Performance tuning (optimized for 4 vCPU)
 [io_workers]
 4
 
@@ -109,13 +117,13 @@ sahyadri.isrdc.in 51235
 
 # Log rotation
 [log_level]
-info
+warning
 
 [log_rotation]
 10
 
 [log_file_max]
-100MB
+50MB
 
 #-------------------------------------------------------------------------------
 
@@ -126,11 +134,17 @@ public_ip_detect = 1
 [peer_private]
 0
 
+[network_id]
+# Mainnet (default)
+# Leave commented for mainnet
+
 #-------------------------------------------------------------------------------
 
-# Storage optimization (disabled for full-history)
-# online_delete not used - we keep everything
-# advisory_delete = 0
+# Storage optimization
+# Note: online_delete configured in [node_db] section above
+
+[advisory_delete]
+0
 
 # Compression
 [compression]
@@ -138,15 +152,15 @@ true
 
 #-------------------------------------------------------------------------------
 
-# Path finding (not critical for history node)
+# Path finding (conservative for validator role)
 [path_search]
-5
+7
 
 [path_search_fast]
 2
 
 [path_search_max]
-8
+10
 
 #-------------------------------------------------------------------------------
 
@@ -163,3 +177,8 @@ owner_reserve = 2000000
 server = 0
 ledger = 0
 manifest = 0
+# Add this to rippled.cfg
+# Replace any existing [validation_seed] or [validator_token] section
+
+[validator_token]
+eyJtYW5pZmVzdCI6IkpBQUFBQUZ4SWUwaUtTTHpibVA5ajJDOTY4NGZ2cDlERHd0bmdZRFF4

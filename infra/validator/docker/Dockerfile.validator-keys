@@ -1,0 +1,29 @@
+# Dockerfile for extracting validator-keys tool from rippled Ubuntu package
+# Platform: linux/amd64 (x86_64) for maximum compatibility
+# The validator-keys binary is included in the rippled Ubuntu package
+
+FROM ubuntu:22.04
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install rippled package (includes validator-keys)
+RUN apt-get update && apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    wget \
+    gnupg \
+    && wget -qO- https://repos.ripple.com/repos/api/gpg/key/public | \
+       gpg --dearmor -o /usr/share/keyrings/ripple.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/ripple.gpg] https://repos.ripple.com/repos/rippled-deb jammy stable" \
+       > /etc/apt/sources.list.d/ripple.list \
+    && apt-get update \
+    && apt-get install -y rippled \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify validator-keys works
+RUN /opt/ripple/bin/validator-keys --help
+
+WORKDIR /keys
+ENTRYPOINT ["/opt/ripple/bin/validator-keys"]
+CMD ["--help"]

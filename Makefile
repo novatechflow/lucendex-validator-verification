@@ -12,7 +12,7 @@ NC := \033[0m
 help:
 	@echo "$(BLUE)╔═══════════════════════════════════════════════════════════╗$(NC)"
 	@echo "$(BLUE)║        Lucendex Infrastructure CLI                        ║$(NC)"
-	@echo "$(BLUE)║        Neutral, Non-Custodial XRPL DEX Aggregator        ║$(NC)"
+	@echo "$(BLUE)║        Neutral, Non-Custodial XRPL DEX Aggregator         ║$(NC)"
 	@echo "$(BLUE)╚═══════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
 	@echo "$(GREEN)Global Commands:$(NC)"
@@ -38,15 +38,22 @@ help:
 	@echo "  make validator-ssh     - SSH into validator"
 	@echo ""
 	@echo "$(YELLOW)Data Services Commands:$(NC)"
-	@echo "  make data-deploy            - Deploy data services"
-	@echo "  make data-status            - Check services status"
-	@echo "  make data-logs              - View all service logs"
-	@echo "  make data-sync-status-api   - Check API node sync"
-	@echo "  make data-sync-status-history - Check history node sync"
-	@echo "  make data-backup            - Create database backup"
-	@echo "  make data-db-shell          - Open PostgreSQL shell"
-	@echo "  make data-ssh               - SSH into data services VM"
-	@echo "  make rotate-passwords       - Rotate all DB passwords (zero downtime)"
+	@echo "  make data-deploy               - Deploy data services"
+	@echo "  make data-status               - Check services status"
+	@echo "  make data-logs                 - View all service logs (follow mode)"
+	@echo "  make data-logs-tail            - View last 100 lines"
+	@echo "  make data-sync-status-api      - Check API node sync"
+	@echo "  make data-sync-status-history  - Check history node sync"
+	@echo "  make data-backup               - Create database backup"
+	@echo "  make data-db-shell             - Open PostgreSQL shell"
+	@echo "  make data-ssh                  - SSH into data services VM"
+	@echo "  make data-health-check         - Comprehensive health check"
+	@echo "  make data-validators-api       - Check API UNL status"
+	@echo "  make data-peers-api            - Check API peers"
+	@echo "  make data-db-health            - Database health check"
+	@echo "  make data-disk-space           - Check disk usage"
+	@echo "  make data-network-test         - Test network connectivity"
+	@echo "  make rotate-passwords          - Rotate all DB passwords (zero downtime)"
 	@echo ""
 	@echo "$(YELLOW)Indexer Commands:$(NC)"
 	@echo "  make indexer-deploy    - Build and deploy indexer"
@@ -113,6 +120,9 @@ validator-status:
 validator-logs:
 	@cd infra/validator && make logs
 
+validator-logs-tail:
+	@cd infra/validator && make logs-tail
+
 validator-sync:
 	@cd infra/validator && make sync-status
 
@@ -127,6 +137,18 @@ validator-resources:
 
 validator-destroy:
 	@cd infra/validator && make destroy
+
+validator-build-keys:
+	@cd infra/validator && make build-validator-keys
+
+validator-generate-keys:
+	@cd infra/validator && make generate-keys
+
+validator-deploy-keys:
+	@cd infra/validator && make deploy-keys
+
+validator-rotate-keys:
+	@cd infra/validator && make rotate-keys
 
 # Data Services Operations (delegate to infra/data-services/Makefile)
 data-deploy:
@@ -213,8 +235,77 @@ data-update-validators:
 data-destroy:
 	@cd infra/data-services && make destroy
 
+data-logs-tail:
+	@cd infra/data-services && make logs-tail
+
+data-logs-api:
+	@cd infra/data-services && make logs-api
+
+data-logs-history:
+	@cd infra/data-services && make logs-history
+
+data-logs-postgres:
+	@cd infra/data-services && make logs-postgres
+
+data-logs-errors:
+	@cd infra/data-services && make logs-errors
+
+data-health-check:
+	@cd infra/data-services && make health-check
+
+data-validators-api:
+	@cd infra/data-services && make validators-api
+
+data-validators-history:
+	@cd infra/data-services && make validators-history
+
+data-peers-api:
+	@cd infra/data-services && make peers-api
+
+data-peers-history:
+	@cd infra/data-services && make peers-history
+
+data-db-health:
+	@cd infra/data-services && make db-health
+
+data-disk-space:
+	@cd infra/data-services && make disk-space
+
+data-network-test:
+	@cd infra/data-services && make network-test
+
 validator-config:
 	@cd infra/validator && make config
+
+validator-peers:
+	@cd infra/validator && make peers
+
+validator-validators:
+	@cd infra/validator && make validators
+
+validator-consensus:
+	@cd infra/validator && make consensus
+
+validator-restart:
+	@cd infra/validator && make restart
+
+validator-stop:
+	@cd infra/validator && make stop
+
+validator-start:
+	@cd infra/validator && make start
+
+validator-keys:
+	@cd infra/validator && make keys
+
+validator-logs-startup:
+	@cd infra/validator && docker logs rippled 2>&1 | head -200
+
+data-logs-startup-api:
+	@cd infra/data-services && ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) "docker logs lucendex-rippled-api 2>&1 | head -200"
+
+data-logs-startup-history:
+	@cd infra/data-services && ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) "docker logs lucendex-rippled-history 2>&1 | head -200"
 
 # Backend Operations
 backend-test:
@@ -247,11 +338,15 @@ backend-deploy:
 v-deploy: validator-deploy
 v-status: validator-status
 v-logs: validator-logs
+v-logs-tail:
+	@cd infra/validator && make logs-tail
 v-sync: validator-sync
 
 d-deploy: data-deploy
 d-status: data-status
 d-logs: data-logs
+d-logs-tail:
+	@cd infra/data-services && make logs-tail
 d-sync-api: data-sync-status-api
 d-sync-history: data-sync-status-history
 

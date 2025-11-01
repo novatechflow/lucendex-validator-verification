@@ -80,13 +80,13 @@ make ssh           # SSH into validator
 
 **Documentation:** [validator/QUICKSTART-VALIDATOR.md](validator/QUICKSTART-VALIDATOR.md)
 
-### ✅ Data Services (M0 - 80% Complete)
+### ✅ Data Services (M0 - Deployed & Syncing)
 
 Combined infrastructure for backend services.
 
 **Location:** `data-services/`
 
-**Status:** ✅ Code Complete, Ready to Deploy
+**Status:** ✅ Deployed 2025-11-01, Nodes Syncing
 
 **Components:**
 - rippled API Node (fast RPC)
@@ -263,22 +263,38 @@ make get-pubkey        # Show public key
 ```bash
 cd infra/data-services
 
+# Core Operations
 make status            # Docker services status
-make logs              # Follow all logs
-make sync-api          # API node sync
-make sync-history      # History node sync
+make logs              # Follow all logs (live)
+make logs-tail         # Last 100 lines (static)
+make sync-api          # API node sync status
+make sync-history      # History node sync status
 make services          # List running containers
-make resources         # Resource usage
+make resources         # CPU/memory/disk usage
 make backup            # Database backup
 make db-shell          # PostgreSQL shell
 make restart           # Restart all services
 make ssh               # SSH into VM
 
-# Indexer specific
-make indexer-deploy    # Deploy indexer
-make indexer-status    # Service status
-make indexer-logs      # Live logs
-make indexer-restart   # Restart service
+# Production Diagnostics (NEW)
+make health-check      # Comprehensive health scan
+make validators-api    # Check API node UNL status
+make validators-history # Check history node UNL status
+make peers-api         # Show API node peers
+make peers-history     # Show history node peers
+make db-health         # Database health + table sizes
+make disk-space        # Check disk usage (all nodes)
+make network-test      # Test connectivity (ports 51234-51236)
+make logs-api          # API node logs only
+make logs-history      # History node logs only
+make logs-postgres     # PostgreSQL logs only
+make logs-errors       # Recent errors across all services
+
+# Indexer Operations
+make indexer-deploy    # Build, deploy, auto-start
+make indexer-status    # Systemd service status
+make indexer-logs      # Live logs (follow mode)
+make indexer-restart   # Restart indexer service
 ```
 
 ### Backend Commands
@@ -293,6 +309,55 @@ make backend-build     # Build indexer binary
 cd backend
 go test ./... -v -cover
 go build ./cmd/indexer
+```
+
+## Production Monitoring
+
+### Quick Health Check
+
+```bash
+# Single command to check everything
+make data-health-check
+
+# Expected output:
+# ✓ All containers running
+# ✓ API node: tracking (or syncing)
+# ✓ History node: tracking (or syncing)  
+# ✓ UNL: active, 35 validators
+# ✓ Database: 3+ tables
+# ✓ Disk: < 80% used
+```
+
+### Monitoring Sync Progress
+
+```bash
+# Watch API node sync (256 ledgers, ~2-4 hours)
+watch -n 30 'make data-sync-api'
+
+# Watch history node sync (full backfill, ~12-24 hours)
+watch -n 60 'make data-sync-history'
+
+# Check all nodes at once
+make sync-status
+```
+
+### Checking for Issues
+
+```bash
+# Recent errors across all services
+make data-logs-errors
+
+# Verify UNL is loading (should show 35 validators)
+make data-validators-api
+
+# Check peer connectivity (should show 10+ peers)
+make data-peers-api
+
+# Monitor disk space (history node will grow to ~150-200GB)
+make data-disk-space
+
+# Database health
+make data-db-health
 ```
 
 ## Complete Workflow
@@ -320,45 +385,63 @@ make data-db-shell      # Query data: SELECT * FROM core.amm_pools;
 ### Daily Operations
 
 ```bash
-# Check everything
-make status
+# Morning health check
+make data-health-check
 
-# Watch indexer
+# Monitor indexer processing
 make indexer-logs
 
-# Check sync progress
-make data-sync-history
+# Check sync status
+make sync-status
 
-# Backup database
+# Backup database (automated, but manual available)
 make data-backup
 
-# Restart if needed
-make indexer-restart
+# Check for errors
+make data-logs-errors
+
+# Monitor disk space (especially history node)
+make data-disk-space
 ```
 
 ### Troubleshooting
 
 ```bash
-# Check indexer service
-make indexer-status
+# Comprehensive Health Check (NEW - Use this first!)
+make data-health-check
+# Shows: Container status, sync state, UNL status, DB tables, disk usage
 
-# View errors
-ssh into VM: make data-ssh
-cat /opt/lucendex/logs/indexer.error.log
+# Check specific issues
+make data-validators-api      # Verify UNL loaded correctly
+make data-peers-api           # Check peer connectivity
+make data-disk-space          # Monitor disk usage
+make data-logs-errors         # Recent errors across all services
 
-# Check rippled
-make data-sync-api
-make data-sync-history
-make data-logs
+# Detailed Node Status
+make data-sync-api            # API node sync progress
+make data-sync-history        # History node sync progress
+make data-logs-api            # API node specific logs
+make data-logs-history        # History node specific logs
 
-# Check database
-make data-db-shell
+# Database Diagnostics
+make data-db-health           # Table sizes + PostgreSQL version
+make data-db-shell            # Interactive SQL
+# Inside shell:
 SELECT * FROM core.latest_checkpoint;
 SELECT * FROM core.get_indexer_lag();
 
-# Restart everything
-make data-restart
-make indexer-restart
+# Indexer Troubleshooting
+make indexer-status           # Systemd status
+make indexer-logs             # Live log following
+ssh into VM: make data-ssh
+cat /opt/lucendex/logs/indexer.error.log
+
+# Network Connectivity
+make data-network-test        # Test RPC + peer ports
+
+# Restart Services
+make data-restart             # All containers
+make indexer-restart          # Indexer only
 ```
 
 ## Design Principles

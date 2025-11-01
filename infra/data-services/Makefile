@@ -38,10 +38,15 @@ status:
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
 		"cd /opt/lucendex/docker && docker compose ps"
 
-# Tail logs
+# Tail logs (follow mode)
 logs:
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
 		"cd /opt/lucendex/docker && docker compose logs -f --tail=100"
+
+# View last 100 lines without following
+logs-tail:
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"cd /opt/lucendex/docker && docker compose logs --tail=100"
 
 # Show PostgreSQL logs (for debugging)
 logs-postgres:
@@ -196,3 +201,89 @@ update-validators:
 	@echo "Uploading validators.txt..."
 	@scp -i terraform/data_services_ssh_key docker/validators.txt root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/docker/
 	@echo "✓ Validators list uploaded. Restart required: make restart"
+
+# Production Diagnostics
+validators-api:
+	@echo "=== API Node Validators Status ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-api rippled validators | jq "{status: .result.validator_list.status, expiration: .result.validator_list.expiration, count: .result.validator_list.count, quorum: .result.validation_quorum}"'
+
+validators-history:
+	@echo "=== History Node Validators Status ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-history rippled validators | jq "{status: .result.validator_list.status, expiration: .result.validator_list.expiration, count: .result.validator_list.count, quorum: .result.validation_quorum}"'
+
+peers-api:
+	@echo "=== API Node Peers ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-api rippled peers | jq "{peer_count: (.result.peers | length), peers: [.result.peers[] | {address, version, uptime}]}"'
+
+peers-history:
+	@echo "=== History Node Peers ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-history rippled peers | jq "{peer_count: (.result.peers | length), peers: [.result.peers[] | {address, version, uptime}]}"'
+
+db-health:
+	@echo "=== Database Health Check ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-postgres psql -U postgres -d lucendex -c "SELECT version();" && echo "" && docker exec lucendex-postgres psql -U postgres -d lucendex -c "SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'"'"'.'"'"'||tablename)) AS size FROM pg_tables WHERE schemaname = '"'"'public'"'"' ORDER BY pg_total_relation_size(schemaname||'"'"'.'"'"'||tablename) DESC;"'
+
+disk-space:
+	@echo "=== Disk Space Check ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"df -h / && echo '' && echo '=== API Node DB ===' && du -sh /var/lib/rippled/api/db/ 2>/dev/null || echo 'Not found' && echo '' && echo '=== History Node DB ===' && du -sh /var/lib/rippled/history/db/ 2>/dev/null || echo 'Not found'"
+
+network-test:
+	@echo "=== Network Connectivity Test ==="
+	@echo "Testing API node RPC (port 51234)..."
+	@curl -s --max-time 5 http://$$(cd terraform && terraform output -raw data_services_ip):51234 -X POST -H "Content-Type: application/json" -d '{"method":"server_info"}' | jq '.result.info.server_state' || echo "❌ API RPC not reachable"
+	@echo ""
+	@echo "Testing peer ports..."
+	@nc -zv $$(cd terraform && terraform output -raw data_services_ip) 51235 2>&1 | grep -q succeeded && echo "✓ API peer port 51235 open" || echo "❌ API peer port 51235 closed"
+	@nc -zv $$(cd terraform && terraform output -raw data_services_ip) 51236 2>&1 | grep -q succeeded && echo "✓ History peer port 51236 open" || echo "❌ History peer port 51236 closed"
+
+health-check:
+	@echo "╔════════════════════════════════════════════════════════════════╗"
+	@echo "║          Lucendex Data Services - Health Check                ║"
+	@echo "╚════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "=== Container Status ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker ps --format 'table {{.Names}}\t{{.Status}}' --filter name=lucendex"
+	@echo ""
+	@echo "=== API Node Sync ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-api rippled server_info 2>/dev/null | jq -r ".result.info | \"State: \(.server_state)\nLedgers: \(.complete_ledgers)\nPeers: \(.peers)\nUptime: \(.uptime)s\""'
+	@echo ""
+	@echo "=== History Node Sync ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-history rippled server_info 2>/dev/null | jq -r ".result.info | \"State: \(.server_state)\nLedgers: \(.complete_ledgers)\nPeers: \(.peers)\nUptime: \(.uptime)s\""'
+	@echo ""
+	@echo "=== Validator List Status ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-api rippled validators 2>/dev/null | jq -r ".result.validator_list | \"Status: \(.status)\nExpiration: \(.expiration)\nCount: \(.count)\""'
+	@echo ""
+	@echo "=== Database ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-postgres psql -U postgres -d lucendex -t -c "SELECT COUNT(*) FROM pg_tables WHERE schemaname = '"'"'public'"'"';" 2>/dev/null | xargs -I{} echo "Tables: {}"'
+	@echo ""
+	@echo "=== Disk Usage ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"df -h / | tail -1 | awk '{print \"Root: \"\$$3\" used of \"\$$2\" (\"\$$5\")\"}'"
+	@echo ""
+	@echo "✓ Health check complete"
+
+logs-api:
+	@echo "=== API Node Logs (last 50 lines) ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker logs --tail 50 lucendex-rippled-api 2>&1"
+
+logs-history:
+	@echo "=== History Node Logs (last 50 lines) ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker logs --tail 50 lucendex-rippled-history 2>&1"
+
+logs-errors:
+	@echo "=== Recent Errors (all services) ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker logs lucendex-rippled-api 2>&1 | grep -i error | tail -20 && echo "" && docker logs lucendex-rippled-history 2>&1 | grep -i error | tail -20 && echo "" && docker logs lucendex-postgres 2>&1 | grep -i error | tail -20'
