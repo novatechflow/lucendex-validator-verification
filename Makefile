@@ -19,6 +19,7 @@ help:
 	@echo "  make deploy            - Deploy all infrastructure"
 	@echo "  make status            - Check status of all components"
 	@echo "  make sync-status       - Check sync status of ALL rippled nodes"
+	@echo "  make logs-tail         - Follow logs from ALL nodes (live)"
 	@echo "  make resources         - Check resources of ALL infrastructure"
 	@echo "  make destroy           - Destroy all infrastructure"
 	@echo "  make test              - Run all backend tests"
@@ -83,7 +84,7 @@ destroy:
 
 sync-status:
 	@echo "$(BLUE)╔═══════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║          Lucendex Sync Status - All Nodes                ║$(NC)"
+	@echo "$(BLUE)║          Lucendex Sync Status - All Nodes                 ║$(NC)"
 	@echo "$(BLUE)╚═══════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
 	@echo "$(YELLOW)=== Validator (Amsterdam) ===$(NC)"
@@ -97,7 +98,7 @@ sync-status:
 
 resources:
 	@echo "$(BLUE)╔═══════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║          Lucendex Resources - All Infrastructure         ║$(NC)"
+	@echo "$(BLUE)║          Lucendex Resources - All Infrastructure          ║$(NC)"
 	@echo "$(BLUE)╚═══════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
 	@echo "$(YELLOW)=== Validator VM (Amsterdam) ===$(NC)"
@@ -105,6 +106,19 @@ resources:
 	@echo ""
 	@echo "$(YELLOW)=== Data Services VM ===$(NC)"
 	@cd infra/data-services && make resources || echo "Data services not deployed"
+
+logs-tail:
+	@echo "$(BLUE)╔═══════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║          Tailing All Node Logs (Ctrl+C to exit)           ║$(NC)"
+	@echo "$(BLUE)╚═══════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Validator:$(NC)"
+	@cd infra/validator && ssh -i terraform/validator_ssh_key root@$$(cd terraform && terraform output -raw validator_ip 2>/dev/null) "docker logs -f --tail=20 rippled 2>&1" | sed 's/^/[VALIDATOR] /' &
+	@echo "$(YELLOW)API Node:$(NC)"
+	@cd infra/data-services && ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) "docker logs -f --tail=20 lucendex-rippled-api 2>&1" | sed 's/^/[API] /' &
+	@echo "$(YELLOW)History Node:$(NC)"
+	@cd infra/data-services && ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) "docker logs -f --tail=20 lucendex-rippled-history 2>&1" | sed 's/^/[HISTORY] /' &
+	@wait
 
 test:
 	@echo "$(GREEN)Running all backend tests...$(NC)"
