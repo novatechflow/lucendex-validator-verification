@@ -202,6 +202,46 @@ update-validators:
 	@scp -i terraform/data_services_ssh_key docker/validators.txt root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/docker/
 	@echo "✓ Validators list uploaded. Restart required: make restart"
 
+# Database Management (Admin - Destructive)
+wipe-ledger-db-api: ## Nuclear: wipe API node database and resync
+	@echo "⚠️  WARNING: This will DELETE all API node ledger data!"
+	@read -p "Type 'wipe' to confirm: " confirm && [ "$$confirm" = "wipe" ]
+	@echo "Cleaning API node database..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker exec lucendex-rippled-api sh -c 'rm -f /var/lib/rippled/db/state* && rm -rf /var/lib/rippled/db/rocksdb/* /var/lib/rippled/db/nudb/*'"
+	@echo "Restarting API node..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker restart lucendex-rippled-api"
+	@sleep 5
+	@echo "✓ API node database wiped - will resync from network"
+	@echo "Monitor with: make sync-status-api"
+
+wipe-ledger-db-history: ## Nuclear: wipe history node database and resync
+	@echo "⚠️  WARNING: This will DELETE all history node ledger data!"
+	@read -p "Type 'wipe' to confirm: " confirm && [ "$$confirm" = "wipe" ]
+	@echo "Cleaning history node database..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker exec lucendex-rippled-history sh -c 'rm -f /var/lib/rippled/db/state* && rm -rf /var/lib/rippled/db/rocksdb/* /var/lib/rippled/db/nudb/*'"
+	@echo "Restarting history node..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker restart lucendex-rippled-history"
+	@sleep 5
+	@echo "✓ History node database wiped - will resync from network"
+	@echo "Monitor with: make sync-status-history"
+
+wipe-ledger-db-all: ## Nuclear: wipe ALL node databases and resync
+	@echo "⚠️  WARNING: This will DELETE ALL ledger data (API + History nodes)!"
+	@read -p "Type 'wipe' to confirm: " confirm && [ "$$confirm" = "wipe" ]
+	@echo "Cleaning all node databases..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker exec lucendex-rippled-api sh -c 'rm -f /var/lib/rippled/db/state* && rm -rf /var/lib/rippled/db/rocksdb/* /var/lib/rippled/db/nudb/*' && docker exec lucendex-rippled-history sh -c 'rm -f /var/lib/rippled/db/state* && rm -rf /var/lib/rippled/db/rocksdb/* /var/lib/rippled/db/nudb/*'"
+	@echo "Restarting all nodes..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker restart lucendex-rippled-api lucendex-rippled-history"
+	@sleep 10
+	@echo "✓ All databases wiped - nodes will resync from network"
+	@echo "Monitor with: make health-check"
+
 # Production Diagnostics
 validators-api:
 	@echo "=== API Node Validators Status ==="

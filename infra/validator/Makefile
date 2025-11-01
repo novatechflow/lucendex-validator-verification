@@ -13,9 +13,9 @@ help: ## Show this help message
 ssh: ## SSH into validator
 	@$(SSH_CMD)
 
-status: ## Check validator status
-	@echo "Checking validator status..."
-	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info" | jq '.result.info.server_state'
+status: ## Check validator status (enhanced)
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info" \
+		| jq '.result.info | {server_state, time, complete_ledgers, peers, pubkey_validator, last_close, load_factor, io_latency_ms}'
 
 sync-status: ## Check ledger sync progress
 	@echo "=== Ledger Sync Status ==="
@@ -149,6 +149,50 @@ keys: ## Show validator keys (public key + seed)
 config: ## Show full rippled configuration
 	@echo "=== rippled.cfg ==="
 	@$(SSH_CMD) "cat /opt/rippled/rippled.cfg"
+
+ledger-status: ## Show current and closed ledger
+	@echo "=== Current Ledger ==="
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled ledger current 2>/dev/null" \
+		| jq '.result // {error: (.error_message // "Not synced yet")}' 2>/dev/null || echo "Not synced yet"
+	@echo ""
+	@echo "=== Closed Ledger ==="
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled ledger closed 2>/dev/null" \
+		| jq '.result // {error: (.error_message // "Not synced yet")}' 2>/dev/null || echo "Not synced yet"
+
+wipe-ledger-db: ## Nuclear option: wipe database and resync
+	@echo "⚠️  WARNING: This will DELETE all ledger data and resync from network!"
+	@read -p "Type 'wipe' to confirm: " confirm && [ "$$confirm" = "wipe" ]
+	@echo "Stopping and removing container..."
+	@$(SSH_CMD) "cd /opt/rippled && docker-compose down"
+	@echo "Removing database volume..."
+	@$(SSH_CMD) "docker volume rm rippled_rippled-db 2>/dev/null || docker volume rm rippled-db 2>/dev/null || true"
+	@echo "Starting rippled (will recreate volume)..."
+	@$(SSH_CMD) "cd /opt/rippled && docker-compose up -d"
+	@sleep 10
+	@echo "✓ Database volume wiped - node will resync from network"
+	@echo "Monitor with: make sync-status"
+
+enable-validation: ## Enable validation (uncomment token, deploy, restart)
+	@echo "Enabling validation..."
+	@sed -i '' 's/^# \[validator_token\]/[validator_token]/' docker/rippled.cfg
+	@sed -i '' '/^\[validator_token\]/,/^$$/s/^# //' docker/rippled.cfg
+	@$(MAKE) update-config
+	@$(MAKE) restart
+	@sleep 30
+	@echo "Checking validator status..."
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info 2>/dev/null" \
+		| jq -r '.result.info | "State: \(.server_state)\nPublic Key: \(.pubkey_validator // "not validating")"'
+
+disable-validation: ## Disable validation (comment token, deploy, restart)
+	@echo "Disabling validation..."
+	@sed -i '' 's/^\[validator_token\]/# [validator_token]/' docker/rippled.cfg
+	@sed -i '' '/^# \[validator_token\]/,/^$$/s/^/# /' docker/rippled.cfg
+	@$(MAKE) update-config
+	@$(MAKE) restart
+	@sleep 30
+	@echo "Checking validator status..."
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info 2>/dev/null" \
+		| jq -r '.result.info.server_state'
 
 version: ## Show rippled version
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled --version"

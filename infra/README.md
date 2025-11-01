@@ -239,23 +239,66 @@ make b-test            # = make backend-test
 make b-build           # = make backend-build
 ```
 
-### Validator Commands
+### Validator Commands (Monitoring - from root)
+
+```bash
+# Read-only monitoring (safe to run from project root)
+make validator-status              # Enhanced status with detailed metrics
+make validator-sync                # Detailed sync progress
+make validator-validators          # UNL status (35 validators)
+make validator-peers               # Show peer connections
+make validator-consensus           # Consensus participation
+make validator-ledger-status       # Current + closed ledger
+make validator-logs                # Follow logs (live)
+make validator-logs-tail           # Last 100 lines
+make validator-logs-startup        # First 200 lines
+make validator-keys                # Show public key
+make validator-config              # View full rippled.cfg
+make validator-version             # rippled version
+make validator-info                # Deployment info
+make validator-resources           # CPU/memory/disk usage
+make validator-updates             # Check system updates
+make validator-firewall-status     # UFW status
+make validator-test-connectivity   # Test peer port 51235
+make validator-verify-backup       # Verify latest backup
+make validator-verify-image        # Verify Docker image SHA256
+make validator-backup              # Create backup
+make validator-ssh                 # SSH into VM
+```
+
+### Validator Admin Commands (require cd infra/validator/)
+
+**⚠️ Destructive operations - require explicit cd for safety:**
 
 ```bash
 cd infra/validator
 
-make status            # Quick status
-make sync-status       # Detailed sync info
-make logs              # Follow logs
-make logs-tail         # Last 100 lines
-make health            # Health check
-make peers             # Connected peers
-make consensus         # Consensus participation
-make resources         # CPU/memory usage
-make backup            # Backup config
-make restart           # Restart rippled
-make ssh               # SSH into VM
-make get-pubkey        # Show public key
+# Admin-only commands
+make enable-validation     # Uncomment [validator_token], deploy, restart
+make disable-validation    # Comment [validator_token], deploy, restart  
+make wipe-ledger-db        # Nuclear: wipe DB and resync
+make update-config         # Deploy rippled.cfg changes
+make restart               # Restart rippled
+make stop                  # Stop rippled
+make start                 # Start rippled
+```
+
+**Typical workflow:**
+```bash
+# Initial deploy (tracking mode)
+make validator-deploy
+
+# After sync complete
+cd infra/validator
+make enable-validation      # Activate validation
+
+# If stuck
+make wipe-ledger-db        # Nuclear option
+
+# For maintenance
+make disable-validation    # Switch to tracking
+# ... maintenance ...
+make enable-validation     # Re-activate
 ```
 
 ### Data Services Commands

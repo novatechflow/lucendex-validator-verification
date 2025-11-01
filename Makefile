@@ -313,6 +313,30 @@ validator-start:
 validator-keys:
 	@cd infra/validator && make keys
 
+validator-ledger-status:
+	@cd infra/validator && make ledger-status
+
+validator-version:
+	@cd infra/validator && make version
+
+validator-info:
+	@cd infra/validator && make info
+
+validator-updates:
+	@cd infra/validator && make updates
+
+validator-firewall-status:
+	@cd infra/validator && make firewall-status
+
+validator-test-connectivity:
+	@cd infra/validator && make test-connectivity
+
+validator-verify-backup:
+	@cd infra/validator && make verify-backup
+
+validator-verify-image:
+	@cd infra/validator && make verify-image
+
 validator-logs-startup:
 	@cd infra/validator && docker logs rippled 2>&1 | head -200
 
