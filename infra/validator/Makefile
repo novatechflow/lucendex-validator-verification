@@ -38,7 +38,12 @@ peers: ## Show connected peers
 
 validators: ## Show validator list (UNL) status
 	@echo "=== Validator List (UNL) Status ==="
-	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled validators" | jq '{status: .result.validator_list.status, expiration: .result.validator_list.expiration, count: .result.validator_list.count, quorum: .result.validation_quorum}'
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled validators" \
+		| jq '{status: .result.validator_list.status, expiration: .result.validator_list.expiration, publisher_sources: .result.validator_list.count, validators: (.result.trusted_validator_keys | length), quorum: .result.validation_quorum}'
+
+validator-list-sites: ## Show UNL download status
+	@echo "=== UNL Sites Download Status ==="
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled validator_list_sites"
 
 logs-startup: ## View first 200 lines of logs (startup)
 	@$(SSH_CMD) "docker logs rippled 2>&1 | head -200"
@@ -219,6 +224,30 @@ peers-detail: ## Show peers with their ledger ranges
 fetch-status: ## Check fetch progress
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled fetch_info" \
 		| jq '.[].info | to_entries | .[:2]' || echo "Not fetching yet"
+
+health-check: ## Comprehensive validator health check
+	@echo "╔════════════════════════════════════════════════════════════════╗"
+	@echo "║          Lucendex Validator - Health Check                     ║"
+	@echo "╚════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "=== Container Status ==="
+	@$(SSH_CMD) "docker ps --format 'table {{.Names}}\t{{.Status}}' --filter name=rippled"
+	@echo ""
+	@echo "=== Sync Status ==="
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info 2>/dev/null" \
+		| jq -r ".result.info | \"State: \(.server_state)\nLedgers: \(.complete_ledgers)\nPeers: \(.peers)\nUptime: \(.uptime)s\nLoad Factor: \(.load_factor)\nIO Latency: \(.io_latency_ms)ms\""
+	@echo ""
+	@echo "=== Validator List Status ==="
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled validators 2>/dev/null" \
+		| jq -r ".result.validator_list | \"Status: \(.status)\nExpiration: \(.expiration)\nPublisher Sources: \(.count)\"" && \
+		$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled validators 2>/dev/null" \
+		| jq -r "\"Validators: \(.result.trusted_validator_keys | length)\nQuorum: \(.result.validation_quorum)\""
+	@echo ""
+	@echo "=== Resource Usage ==="
+	@$(SSH_CMD) "df -h / | tail -1 | awk '{print \"Disk: \"\$$3\" used of \"\$$2\" (\"\$$5\")\"}'"
+	@$(SSH_CMD) "free -h | grep Mem | awk '{print \"Memory: \"\$$3\" used of \"\$$2}'"
+	@echo ""
+	@echo "✓ Health check complete"
 
 version: ## Show rippled version
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled --version"

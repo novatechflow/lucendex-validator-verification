@@ -266,6 +266,32 @@ make validator-backup              # Create backup
 make validator-ssh                 # SSH into VM
 ```
 
+### Validator Debug Commands (from root)
+
+**Sync diagnostics:**
+```bash
+make validator-sync-debug           # Snapshot: state, peers, fetch status
+make validator-logs-sync            # Live: watch ledger acquisition  
+make validator-peers-detail         # Peers with ledger ranges
+make validator-fetch-status         # Check fetch progress
+make validator-validator-list-sites # UNL download status
+```
+
+**Usage:**
+```bash
+# If validator stuck syncing
+make validator-sync-debug       # Quick diagnostic snapshot
+
+# Are you behind peers?
+make validator-peers-detail     # Compare your ledgers vs peers
+
+# Watch sync work
+make validator-logs-sync        # Follow acquisition in real-time
+
+# Check UNL download
+make validator-validator-list-sites  # Verify UNL fetching
+```
+
 ### Validator Admin Commands (require cd infra/validator/)
 
 **⚠️ Destructive operations - require explicit cd for safety:**
@@ -287,6 +313,9 @@ make start                 # Start rippled
 ```bash
 # Initial deploy (tracking mode)
 make validator-deploy
+
+# Monitor sync
+make validator-sync-debug
 
 # After sync complete
 cd infra/validator

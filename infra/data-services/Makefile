@@ -246,12 +246,22 @@ wipe-ledger-db-all: ## Nuclear: wipe ALL node databases and resync
 validators-api:
 	@echo "=== API Node Validators Status ==="
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
-		'docker exec lucendex-rippled-api rippled validators | jq "{status: .result.validator_list.status, expiration: .result.validator_list.expiration, count: .result.validator_list.count, quorum: .result.validation_quorum}"'
+		'docker exec lucendex-rippled-api rippled validators | jq "{status: .result.validator_list.status, expiration: .result.validator_list.expiration, publisher_sources: .result.validator_list.count, validators: (.result.trusted_validator_keys | length), quorum: .result.validation_quorum}"'
 
 validators-history:
 	@echo "=== History Node Validators Status ==="
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
-		'docker exec lucendex-rippled-history rippled validators | jq "{status: .result.validator_list.status, expiration: .result.validator_list.expiration, count: .result.validator_list.count, quorum: .result.validation_quorum}"'
+		'docker exec lucendex-rippled-history rippled validators | jq "{status: .result.validator_list.status, expiration: .result.validator_list.expiration, publisher_sources: .result.validator_list.count, validators: (.result.trusted_validator_keys | length), quorum: .result.validation_quorum}"'
+
+validator-list-sites-api:
+	@echo "=== API Node UNL Sites Download Status ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-api rippled validator_list_sites'
+
+validator-list-sites-history:
+	@echo "=== History Node UNL Sites Download Status ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-history rippled validator_list_sites'
 
 peers-api:
 	@echo "=== API Node Peers ==="
@@ -284,7 +294,7 @@ network-test:
 
 health-check:
 	@echo "╔════════════════════════════════════════════════════════════════╗"
-	@echo "║          Lucendex Data Services - Health Check                ║"
+	@echo "║          Lucendex Data Services - Health Check                 ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
 	@echo ""
 	@echo "=== Container Status ==="

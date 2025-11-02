@@ -1,8 +1,8 @@
 # Lucendex DEX - Project Status Dashboard
 
-**Last Updated:** 2025-11-01  
+**Last Updated:** 2025-11-02  
 **Current Milestone:** M0 (Foundation Infrastructure)  
-**Overall Progress:** ~75% (M0 Deployed & Syncing, M4 at 80%)
+**Overall Progress:** ~85% (M0 Deployed & Syncing with NuDB, M4 Validating Soon)
 
 ---
 
@@ -299,6 +299,34 @@ XRPL-DEX/
 
 ## 🔄 Change Log
 
+### 2025-11-02 (Sync Optimization & UNL Fix)
+- ✅ Fixed validator UNL configuration
+  - Added missing `[validator_list_sites]` (vl.ripple.com + unl.xrplf.org)
+  - Validator now trusts 36 validators (was 0)
+  - Validation enabled and syncing
+- ✅ Migrated data-services to NuDB
+  - Switched from RocksDB (stuck 20h) → NuDB
+  - API node resyncing with NuDB
+  - History node resyncing with NuDB
+  - Expected sync: 2-6 hours (vs 20h+ with RocksDB)
+- ✅ Enhanced monitoring infrastructure
+  - Fixed `make validators` to show actual count (36 validators, not "2 sources")
+  - Added `make health-check` to validator Makefile
+  - Added `make health-check-all` to root Makefile
+  - Total CLI commands: 80+ in root Makefile
+- ✅ Advanced sync diagnostics
+  - `make sync-debug` - comprehensive snapshot
+  - `make logs-sync` - live sync log following
+  - `make peers-detail` - peer ledger comparison
+  - `make fetch-status` - fetch progress monitoring
+  - `make validator-list-sites` - UNL download status
+- 📊 Current Status (as of 13:00 UTC):
+  - Validator: connected, validation enabled, 36 validators, syncing
+  - API Node: connected, 35 validators, resyncing with NuDB
+  - History Node: connected, 35 validators, resyncing with NuDB
+  - PostgreSQL: Running, ready for indexer
+- ⏳ Next: Wait for sync → deploy indexer → M1 development
+
 ### 2025-11-01 (M0 Deployed)
 - ✅ Data services deployed to production
 - ✅ Fixed stale database issues (wiped /var/lib/rippled/*/db/*)
@@ -352,7 +380,7 @@ XRPL-DEX/
 
 - **Validator Domain**: https://lucendex.com/.well-known/xrp-ledger.toml
 - **GitHub**: git@github.com:2pk03/XRPL-DEX.git
-- **System Health**: Run `make data-health-check` or `make sync-status`
+- **System Health**: Run `make health-check-all` for complete infrastructure status
 - **Validator Status**: Run `make validator-sync`
 - **Data Services Status**: Run `make data-sync-status-api` and `make data-sync-status-history`
 - **Documentation**: See `doc/` directory
