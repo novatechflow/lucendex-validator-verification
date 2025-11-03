@@ -7,19 +7,66 @@
 help:
 	@echo "Lucendex Data Services Management"
 	@echo ""
-	@echo "Available commands:"
-	@echo "  make deploy       - Deploy data services infrastructure"
-	@echo "  make destroy      - Destroy data services infrastructure"
-	@echo "  make status       - Show status of all services"
-	@echo "  make logs         - Tail logs from all services"
-	@echo "  make ssh          - SSH into data services VM"
-	@echo "  make backup       - Create backup of database"
-	@echo "  make db-shell     - Open PostgreSQL shell"
-	@echo "  make services     - List running services"
-	@echo "  make restart      - Restart all services"
-	@echo "  make sync-status-api     - Check rippled API sync status"
-	@echo "  make sync-status-history - Check rippled history sync status"
-	@echo "  make resources    - Show CPU and memory usage"
+	@echo "Core Operations:"
+	@echo "  make deploy                - Deploy data services infrastructure"
+	@echo "  make destroy               - Destroy data services infrastructure"
+	@echo "  make status                - Show status of all services"
+	@echo "  make services              - List running Docker containers"
+	@echo "  make restart               - Restart all services"
+	@echo "  make start                 - Start all services"
+	@echo "  make stop                  - Stop all services"
+	@echo "  make ssh                   - SSH into data services VM"
+	@echo ""
+	@echo "Monitoring & Health:"
+	@echo "  make health-check          - Comprehensive health check"
+	@echo "  make sync-status-api       - Check API node sync status"
+	@echo "  make sync-status-history   - Check history node sync status"
+	@echo "  make sync-debug-api        - API node sync diagnostics (detailed)"
+	@echo "  make sync-debug-history    - History node sync diagnostics (detailed)"
+	@echo "  make validators-api        - Check API node UNL status"
+	@echo "  make validators-history    - Check history node UNL status"
+	@echo "  make validator-list-sites-api    - API UNL download status"
+	@echo "  make validator-list-sites-history - History UNL download status"
+	@echo "  make peers-api             - Show API node peers"
+	@echo "  make peers-history         - Show history node peers"
+	@echo "  make resources             - Show CPU and memory usage"
+	@echo "  make disk-space            - Check disk usage"
+	@echo "  make network-test          - Test network connectivity"
+	@echo ""
+	@echo "Logs:"
+	@echo "  make logs                  - Follow all service logs"
+	@echo "  make logs-tail             - Last 100 lines (all services)"
+	@echo "  make logs-api              - API node logs"
+	@echo "  make logs-history          - History node logs"
+	@echo "  make logs-postgres         - PostgreSQL logs"
+	@echo "  make logs-errors           - Recent errors (all services)"
+	@echo ""
+	@echo "Database:"
+	@echo "  make db-shell              - Open PostgreSQL shell"
+	@echo "  make db-health             - Database health check"
+	@echo "  make backup                - Create database backup"
+	@echo "  make rotate-passwords      - Rotate DB passwords"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  make config                - Show all configurations"
+	@echo "  make config-api            - Show API node config"
+	@echo "  make config-history        - Show history node config"
+	@echo "  make config-postgres       - Show PostgreSQL config"
+	@echo "  make update-config-api     - Upload API node config"
+	@echo "  make update-config-history - Upload history node config"
+	@echo "  make update-config-postgres - Upload PostgreSQL config"
+	@echo "  make update-validators     - Upload validators.txt"
+	@echo ""
+	@echo "Indexer:"
+	@echo "  make indexer-deploy        - Build and deploy indexer"
+	@echo "  make indexer-status        - Check indexer status"
+	@echo "  make indexer-logs          - Follow indexer logs"
+	@echo "  make indexer-restart       - Restart indexer"
+	@echo ""
+	@echo "⚠️  Admin (Destructive - Requires cd infra/data-services/):"
+	@echo "  make wipe-ledger-db-api    - Wipe API node database"
+	@echo "  make wipe-ledger-db-history - Wipe history node database"
+	@echo "  make wipe-ledger-db-all    - Wipe all ledger databases"
 
 # Deploy infrastructure and services
 deploy:
@@ -241,6 +288,33 @@ wipe-ledger-db-all: ## Nuclear: wipe ALL node databases and resync
 	@sleep 10
 	@echo "✓ All databases wiped - nodes will resync from network"
 	@echo "Monitor with: make health-check"
+
+# Sync Diagnostics
+sync-debug-api: ## Comprehensive API node sync diagnostics
+	@echo "=== API Node Sync Debug ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-api rippled server_info | jq "{state: .result.info.server_state, complete: .result.info.complete_ledgers, peers: .result.info.peers, fetch_pack: .result.info.fetch_pack}"'
+	@echo ""
+	@echo "=== Peer Ledger Comparison (API) ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-api rippled peers | jq -r ".result.peers[] | \"\(.address)  \(.complete_ledgers)\"" | head -20'
+	@echo ""
+	@echo "=== Fetch Status (API) ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-api rippled fetch_info | jq ".[].info | to_entries | .[:2]"' || echo "Not fetching yet"
+
+sync-debug-history: ## Comprehensive history node sync diagnostics
+	@echo "=== History Node Sync Debug ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-history rippled server_info | jq "{state: .result.info.server_state, complete: .result.info.complete_ledgers, peers: .result.info.peers, fetch_pack: .result.info.fetch_pack}"'
+	@echo ""
+	@echo "=== Peer Ledger Comparison (History) ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-history rippled peers | jq -r ".result.peers[] | \"\(.address)  \(.complete_ledgers)\"" | head -20'
+	@echo ""
+	@echo "=== Fetch Status (History) ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-rippled-history rippled fetch_info | jq ".[].info | to_entries | .[:2]"' || echo "Not fetching yet"
 
 # Production Diagnostics
 validators-api:

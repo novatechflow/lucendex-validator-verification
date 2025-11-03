@@ -292,6 +292,12 @@ data-validator-list-sites-api:
 data-validator-list-sites-history:
 	@cd infra/data-services && make validator-list-sites-history
 
+data-sync-debug-api:
+	@cd infra/data-services && make sync-debug-api
+
+data-sync-debug-history:
+	@cd infra/data-services && make sync-debug-history
+
 data-peers-api:
 	@cd infra/data-services && make peers-api
 
