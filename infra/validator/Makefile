@@ -179,7 +179,7 @@ wipe-ledger-db: ## Nuclear option: wipe database and resync
 
 enable-validation: ## Enable validation (uncomment token, deploy, restart)
 	@echo "Enabling validation..."
-	@sed -i '' 's/^# # \[validator_token\]/[validator_token]/' docker/rippled.cfg
+	@sed -i '' 's/^# \[validator_token\]/[validator_token]/' docker/rippled.cfg
 	@sed -i '' 's/^# eyJ/eyJ/' docker/rippled.cfg
 	@sed -i '' 's/^# NjN/NjN/' docker/rippled.cfg
 	@sed -i '' 's/^# Q2V/Q2V/' docker/rippled.cfg
@@ -197,7 +197,7 @@ enable-validation: ## Enable validation (uncomment token, deploy, restart)
 
 disable-validation: ## Disable validation (comment token, deploy, restart)
 	@echo "Disabling validation..."
-	@sed -i '' 's/^\[validator_token\]/# # [validator_token]/' docker/rippled.cfg
+	@sed -i '' 's/^\[validator_token\]/# [validator_token]/' docker/rippled.cfg
 	@sed -i '' 's/^eyJ/# eyJ/' docker/rippled.cfg
 	@sed -i '' 's/^NjN/# NjN/' docker/rippled.cfg
 	@sed -i '' 's/^Q2V/# Q2V/' docker/rippled.cfg
