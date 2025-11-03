@@ -38,6 +38,7 @@ Below updates adapt the previously drafted architecture to Lucendex's **neutral 
 
 ```mermaid
 flowchart TD
+    %% GROUPS
     subgraph CLIENT["User Environment"]
         U[Browser]
         W[GemWallet / Xumm]
@@ -49,7 +50,7 @@ flowchart TD
 
     subgraph BE["Backend (Go)"]
         APIPUB["Public API (REST)"]
-        APIPARTNER["Partner API (REST/gRPC)<br/>Auth+Quotas+Metering"]
+        APIPARTNER["Partner API (REST/gRPC)<br/>Auth + Quotas + Metering"]
         ROUTER["Router / Pathfinder<br/>Fee-in-QuoteHash"]
         RELAY["Relay (optional)<br/>Signed blob submit only"]
         IDX["Indexer (ledger stream)"]
@@ -61,30 +62,38 @@ flowchart TD
         OBJ["Object Storage<br/>(backups, logs)"]
     end
 
-    subgraph XRPL["XRPL Infrastructure"]
+    %% Represent XRPL network explicitly
+    subgraph XRPLNET["XRPL P2P Network"]
         R1["rippled API Node"]
         R2["rippled Full-History Node"]
         V1["XRPL Validator (Lucendex-operated)<br/>Independent & audited"]
     end
 
+    %% CLIENT / FE
     U --> FE1
     FE1 --> APIPUB
     FE1 --> W
 
+    %% BE reads/writes (dashed = read/subscribe, solid = write/submit)
     APIPUB --> ROUTER
     APIPARTNER --> ROUTER
     APIPARTNER --> RELAY
 
+    ROUTER -. read-only .-> R1
     ROUTER --> KV
     ROUTER --> DB
+    IDX -. stream/ws .-> R1
+    IDX -. history .-> R2
     IDX --> KV
     IDX --> DB
 
-    RELAY --> R1
-    ROUTER --> R1
-    IDX --> R2
+    %% Submit path (signed blob only)
+    RELAY ==> R1
+
+    %% XRPL peering (not a parent/child)
     R1 <--> R2
-    R2 --> V1
+    R1 <--> V1
+    R2 <--> V1
 ```
 
 ---
