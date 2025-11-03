@@ -43,6 +43,13 @@ services:
       - "51235:51235"  # Peer
     networks:
       - lucendex
+    # Resource limits for 32GB RAM VM
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+        reservations:
+          memory: 4g
     # File descriptor limits
     ulimits:
       nofile:
@@ -69,6 +76,13 @@ services:
       - "51236:51236"  # Peer
     networks:
       - lucendex
+    # Resource limits for full history (heavy workload)
+    deploy:
+      resources:
+        limits:
+          memory: 18g     # Full history needs significant RAM
+        reservations:
+          memory: 12g
     # File descriptor limits
     ulimits:
       nofile:
