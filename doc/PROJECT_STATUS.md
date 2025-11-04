@@ -155,7 +155,7 @@
 
 **Current Status:**
 - Public Key: `n9LNh1zyyKdvhgu3npf4rFMHnsEXQy1q7iQEA3gcgn7WCTtQkePR`
-- Server: 78.141.216.117 (Amsterdam)
+- Server: 78.141.216.117  
 - State: Syncing (optimized config deployed 2025-10-31)
 - Domain: https://lucendex.com/.well-known/xrp-ledger.toml
 

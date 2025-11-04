@@ -17,6 +17,10 @@ echo "Updating system packages..."
 apt-get update
 apt-get upgrade -y
 
+# Install essential tools
+echo "Installing essential tools..."
+apt-get install -y jq
+
 # Install Docker if not already installed
 if ! command -v docker &> /dev/null; then
     echo "Installing Docker..."

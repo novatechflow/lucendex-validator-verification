@@ -135,7 +135,8 @@ apt-get install -y \
     iotop \
     sysstat \
     ncdu \
-    nethogs
+    nethogs \
+    jq
 
 # Enable sysstat
 systemctl enable sysstat
