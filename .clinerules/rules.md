@@ -1,5 +1,13 @@
 # Lucendex Core Rules
 
+## 0. CONCISE COMMUNICATION - MOST IMPORTANT
+**Stop wasting tokens with useless summaries or explanations. Short, concise is king!**
+
+- No verbose attempt_completion messages
+- No repetitive explanations
+- Get to the point immediately
+- Respect token budget
+
 ## 1. Documentation-First Development
 **Always read `doc/` before suggesting any changes.**
 

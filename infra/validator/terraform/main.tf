@@ -2,86 +2,84 @@ terraform {
   required_version = ">= 1.0"
   
   required_providers {
-    vultr = {
-      source  = "vultr/vultr"
-      version = "~> 2.19"
+    contabo = {
+      source  = "contabo/contabo"
+      version = "~> 0.1"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.4"
     }
   }
+  
+  # Remove old Vultr state
+  backend "local" {}
 }
 
-provider "vultr" {
-  api_key = var.vultr_api_key
-  rate_limit  = 100
-  retry_limit = 3
+provider "contabo" {
+  oauth2_client_id     = var.contabo_client_id
+  oauth2_client_secret = var.contabo_client_secret
+  oauth2_user          = var.contabo_api_user
+  oauth2_pass          = var.contabo_api_password
 }
 
-# SSH key for validator access
-resource "vultr_ssh_key" "validator" {
-  name    = "lucendex-validator-${var.environment}"
-  ssh_key = file("${path.module}/validator_ssh_key.pub")
+# Generate SSH key pair for validator access
+resource "tls_private_key" "validator_ssh" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
-# Validator VM instance
-resource "vultr_instance" "validator" {
-  plan   = var.instance_plan
+# Save private key locally
+resource "local_file" "validator_private_key" {
+  content         = tls_private_key.validator_ssh.private_key_pem
+  filename        = "${path.module}/validator_ssh_key"
+  file_permission = "0600"
+}
+
+# Save public key locally
+resource "local_file" "validator_public_key" {
+  content         = tls_private_key.validator_ssh.public_key_openssh
+  filename        = "${path.module}/validator_ssh_key.pub"
+  file_permission = "0644"
+}
+
+# Create Contabo instance for XRPL validator
+resource "contabo_instance" "validator" {
+  # Image: Ubuntu 22.04 LTS (default from Contabo)
+  image_id = var.image_id
+  
+  # Product: VPS 30 NVMe (8 vCPU, 24GB RAM, 200GB NVMe) - €11.20/month
+  product_id = var.instance_plan
+  
+  # Region: EU (Frankfurt, Germany) - closest to Malta
   region = var.region
-  os_id  = var.os_id
-  label  = "lucendex-xrpl-validator-${var.environment}"
   
-  hostname = "xrpl-validator"
+  # Billing period: monthly
+  period = var.period
   
-  ssh_key_ids = [vultr_ssh_key.validator.id]
+  # Display name for easier identification
+  display_name = "lucendex-xrpl-validator-${var.environment}"
   
-  # Enable backups
-  backups = "enabled"
-  
-  # Enable auto-backups
-  backups_schedule {
-    type = "daily"
-  }
-  
-  # User data for initial setup
+  # Cloud-init user data with SSH key injection
   user_data = base64encode(templatefile("${path.module}/cloud-init.yaml", {
-    hostname = "xrpl-validator"
+    hostname   = "xrpl-validator-${var.environment}"
+    ssh_pubkey = tls_private_key.validator_ssh.public_key_openssh
   }))
   
-  # Wait for instance to be ready
-  activation_email = false
+  # Default user for SSH access
+  default_user = var.default_user
 }
 
-# Firewall group for validator
-resource "vultr_firewall_group" "validator" {
-  description = "XRPL Validator Firewall"
-}
-
-# Allow XRPL peer-to-peer (51235)
-resource "vultr_firewall_rule" "xrpl_peer" {
-  firewall_group_id = vultr_firewall_group.validator.id
-  protocol          = "tcp"
-  ip_type           = "v4"
-  subnet            = "0.0.0.0"
-  subnet_size       = 0
-  port              = "51235"
-  notes             = "XRPL peer-to-peer"
-}
-
-# Allow SSH (restricted to your IP if provided)
-resource "vultr_firewall_rule" "ssh" {
-  firewall_group_id = vultr_firewall_group.validator.id
-  protocol          = "tcp"
-  ip_type           = "v4"
-  subnet            = var.admin_ip != "" ? var.admin_ip : "0.0.0.0"
-  subnet_size       = var.admin_ip != "" ? 32 : 0
-  port              = "22"
-  notes             = "SSH access"
-}
-
-# Allow ICMP (ping)
-resource "vultr_firewall_rule" "icmp" {
-  firewall_group_id = vultr_firewall_group.validator.id
-  protocol          = "icmp"
-  ip_type           = "v4"
-  subnet            = "0.0.0.0"
-  subnet_size       = 0
-  notes             = "ICMP ping"
-}
+# Note: Contabo handles firewall rules differently than Vultr
+# Firewall rules are typically managed through the Contabo control panel
+# or via separate API calls, not as Terraform resources.
+# 
+# Required ports for XRPL validator:
+# - 22/tcp: SSH
+# - 51235/tcp: XRPL peer-to-peer
+#
+# These should be configured in the Contabo control panel or via cloud-init/UFW

@@ -69,12 +69,10 @@ net.ipv4.conf.all.log_martians = 1
 # File handles
 fs.file-max = 2097152
 fs.nr_open = 2097152
-
-# Connection tracking
-net.netfilter.nf_conntrack_max = 1048576
 EOF
 
-sysctl -p /etc/sysctl.d/99-xrpl-validator.conf
+# Apply sysctl with --ignore flag for missing parameters
+sysctl --system 2>/dev/null || sysctl -p /etc/sysctl.d/99-xrpl-validator.conf 2>/dev/null || true
 
 # Set file limits
 echo "Configuring file limits..."

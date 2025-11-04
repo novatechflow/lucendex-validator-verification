@@ -1,9 +1,29 @@
-variable "vultr_api_key" {
-  description = "Vultr API key"
+# Contabo API Authentication
+variable "contabo_client_id" {
+  description = "Contabo OAuth2 Client ID"
   type        = string
   sensitive   = true
 }
 
+variable "contabo_client_secret" {
+  description = "Contabo OAuth2 Client Secret"
+  type        = string
+  sensitive   = true
+}
+
+variable "contabo_api_user" {
+  description = "Contabo API User (email address)"
+  type        = string
+  sensitive   = true
+}
+
+variable "contabo_api_password" {
+  description = "Contabo API Password"
+  type        = string
+  sensitive   = true
+}
+
+# Instance Configuration
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
@@ -11,65 +31,77 @@ variable "environment" {
 }
 
 variable "region" {
-  description = "Vultr region for validator deployment"
+  description = "Contabo region for validator deployment"
   type        = string
-  default     = "ams" # Amsterdam
+  default     = "EU" # Frankfurt, Germany - closest to Malta
   
   # Available regions:
-  # ams - Amsterdam
-  # atl - Atlanta
-  # cdg - Paris
-  # dfw - Dallas
-  # ewr - New Jersey
-  # fra - Frankfurt
-  # lhr - London
-  # lax - Los Angeles
-  # nrt - Tokyo
-  # ord - Chicago
-  # sea - Seattle
-  # sgp - Singapore
-  # syd - Sydney
+  # EU - Frankfurt, Germany
+  # US-central - St. Louis, USA
+  # US-east - New York, USA
+  # US-west - Seattle, USA
+  # SIN - Singapore
+  # UK - London
+  # AUS - Sydney
+  # JPN - Tokyo
+  # IND - India
 }
 
 variable "instance_plan" {
-  description = "Vultr instance plan"
+  description = "Contabo product ID (VPS plan)"
   type        = string
-  default     = "vc2-4c-8gb" # 4 vCPU, 8GB RAM, 160GB SSD
+  default     = "V97" # VPS 30 NVMe: 8 vCPU, 24GB RAM, 200GB NVMe - €11.20/month
   
-  # Available plans:
-  # vc2-1c-2gb  - 1 vCPU, 2GB RAM, 55GB SSD   (~$12/mo)
-  # vc2-2c-4gb  - 2 vCPU, 4GB RAM, 80GB SSD   (~$24/mo)
-  # vc2-4c-8gb  - 4 vCPU, 8GB RAM, 160GB SSD  (~$48/mo) [RECOMMENDED]
-  # vc2-6c-16gb - 6 vCPU, 16GB RAM, 320GB SSD (~$96/mo)
+  # Available validator plans:
+  # V91 - VPS 10 NVMe: 4 vCPU, 8GB RAM, 75GB NVMe (~€6/month)
+  # V97 - VPS 30 NVMe: 8 vCPU, 24GB RAM, 200GB NVMe (~€11.20/month) [RECOMMENDED]
+  # V100 - VPS 40 NVMe: 10 vCPU, 30GB RAM, 250GB NVMe (~€17/month)
 }
 
-variable "os_id" {
-  description = "Operating system ID"
+variable "image_id" {
+  description = "Contabo image ID"
+  type        = string
+  default     = "afecbb85-e2fc-46f0-9684-b46b1faf00bb" # Ubuntu 22.04 LTS
+}
+
+variable "period" {
+  description = "Billing period in months (1, 3, 6, or 12)"
   type        = number
-  default     = 1743 # Ubuntu 22.04 LTS x64
-}
-
-variable "admin_ip" {
-  description = "Admin IP address for SSH access (leave empty for any)"
-  type        = string
-  default     = ""
+  default     = 1
   
-  # To restrict SSH to your IP:
-  # admin_ip = "203.0.113.42" # Your IP address
+  validation {
+    condition     = contains([1, 3, 6, 12], var.period)
+    error_message = "Period must be 1, 3, 6, or 12 months."
+  }
 }
 
-variable "validator_domain" {
-  description = "Optional domain name for validator"
+variable "default_user" {
+  description = "Default user for SSH access"
   type        = string
-  default     = ""
+  default     = "root"
+  
+  validation {
+    condition     = contains(["root", "admin"], var.default_user)
+    error_message = "Default user must be either 'root' or 'admin'."
+  }
 }
 
-variable "enable_ipv6" {
-  description = "Enable IPv6 support"
-  type        = bool
-  default     = false
+# SSH Configuration (Optional)
+# Note: SSH keys in Contabo must be pre-created via the Secrets API
+# and referenced by their secretId
+variable "ssh_key_secret_id" {
+  description = "Contabo secret ID for SSH public key"
+  type        = number
+  default     = null
 }
 
+variable "root_password_secret_id" {
+  description = "Contabo secret ID for root password"
+  type        = number
+  default     = null
+}
+
+# Optional Tags
 variable "tags" {
   description = "Additional tags for resources"
   type        = map(string)

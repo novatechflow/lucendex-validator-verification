@@ -9,6 +9,7 @@ help:
 	@echo ""
 	@echo "Core Operations:"
 	@echo "  make deploy                - Deploy data services infrastructure"
+	@echo "  make continue-deploy       - Continue interrupted deployment (fixes SSH + deploys services)"
 	@echo "  make destroy               - Destroy data services infrastructure"
 	@echo "  make status                - Show status of all services"
 	@echo "  make services              - List running Docker containers"
@@ -73,6 +74,32 @@ deploy:
 	@echo "Deploying data services..."
 	@chmod +x data-services-deploy.sh
 	@./data-services-deploy.sh
+
+# Continue interrupted deployment (fixes SSH + deploys services)
+continue-deploy:
+	@echo "=== Continuing Data Services Deployment ==="
+	@echo "Step 1: Uploading and running setup script..."
+	@scp -i terraform/data_services_ssh_key -o StrictHostKeyChecking=no scripts/setup-vm.sh root@$$(cd terraform && terraform output -raw data_services_ip):/root/
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) 'bash /root/setup-vm.sh'
+	@echo ""
+	@echo "Step 2: Uploading Docker configs..."
+	@scp -i terraform/data_services_ssh_key -o StrictHostKeyChecking=no docker/docker-compose.yml root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/docker/
+	@scp -i terraform/data_services_ssh_key -o StrictHostKeyChecking=no docker/rippled-api.cfg root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/docker/
+	@scp -i terraform/data_services_ssh_key -o StrictHostKeyChecking=no docker/rippled-history.cfg root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/docker/
+	@scp -i terraform/data_services_ssh_key -o StrictHostKeyChecking=no docker/postgresql.conf root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/docker/
+	@scp -i terraform/data_services_ssh_key -o StrictHostKeyChecking=no docker/validators.txt root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/docker/
+	@scp -i terraform/data_services_ssh_key -o StrictHostKeyChecking=no docker/init-db.sql root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/docker/
+	@echo ""
+	@echo "Step 3: Creating .env file..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'cd /opt/lucendex/docker && [ ! -f .env ] && echo "POSTGRES_PASSWORD=$$(openssl rand -base64 32)" > .env && echo "INDEXER_DB_PASSWORD=$$(openssl rand -base64 32)" >> .env || echo ".env exists, skipping"'
+	@echo ""
+	@echo "Step 4: Starting services..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'cd /opt/lucendex/docker && docker compose up -d'
+	@echo ""
+	@echo "✓ Deployment continued successfully!"
+	@echo "Check status with: make health-check"
 
 # Destroy infrastructure
 destroy:

@@ -1,9 +1,29 @@
-variable "vultr_api_key" {
-  description = "Vultr API key"
+# Contabo API Authentication
+variable "contabo_client_id" {
+  description = "Contabo OAuth2 Client ID"
   type        = string
   sensitive   = true
 }
 
+variable "contabo_client_secret" {
+  description = "Contabo OAuth2 Client Secret"
+  type        = string
+  sensitive   = true
+}
+
+variable "contabo_api_user" {
+  description = "Contabo API User (email address)"
+  type        = string
+  sensitive   = true
+}
+
+variable "contabo_api_password" {
+  description = "Contabo API Password"
+  type        = string
+  sensitive   = true
+}
+
+# Instance Configuration
 variable "environment" {
   description = "Environment name (production, staging, etc.)"
   type        = string
@@ -11,32 +31,78 @@ variable "environment" {
 }
 
 variable "instance_plan" {
-  description = "Vultr instance plan ID"
+  description = "Contabo product ID (VPS plan)"
   type        = string
-  # vc2-6c-16gb: 6 vCPU, 16GB RAM, 320GB SSD - $96/mo
-  default     = "vc2-6c-16gb"
+  default     = "V103" # VPS 50 NVMe: 16 vCPU, 64GB RAM, 300GB NVMe - €29.60/month
+  
+  # Available data services plans:
+  # V97 - VPS 30 NVMe: 8 vCPU, 24GB RAM, 200GB NVMe (~€11.20/month)
+  # V100 - VPS 40 NVMe: 10 vCPU, 30GB RAM, 250GB NVMe (~€17/month)
+  # V103 - VPS 50 NVMe: 16 vCPU, 64GB RAM, 300GB NVMe (~€29.60/month) [RECOMMENDED]
+  # V106 - VPS 60 NVMe: 20 vCPU, 80GB RAM, 350GB NVMe (~€46/month)
 }
 
 variable "region" {
-  description = "Vultr region"
+  description = "Contabo region"
   type        = string
-  # Frankfurt (close to Malta)
-  default     = "fra"
+  default     = "EU" # Frankfurt, Germany - closest to Malta
+  
+  # Available regions:
+  # EU - Frankfurt, Germany
+  # US-central - St. Louis, USA
+  # US-east - New York, USA
+  # US-west - Seattle, USA
+  # SIN - Singapore
+  # UK - London
+  # AUS - Sydney
+  # JPN - Tokyo
+  # IND - India
 }
 
-variable "os_id" {
-  description = "Operating system ID"
+variable "image_id" {
+  description = "Contabo image ID"
   type        = string
-  # Ubuntu 22.04 LTS
-  default     = "1743"
+  default     = "afecbb85-e2fc-46f0-9684-b46b1faf00bb" # Ubuntu 22.04 LTS
 }
 
-variable "admin_ip" {
-  description = "Admin IP address for SSH access (leave empty for 0.0.0.0/0)"
-  type        = string
-  default     = ""
+variable "period" {
+  description = "Billing period in months (1, 3, 6, or 12)"
+  type        = number
+  default     = 1
+  
+  validation {
+    condition     = contains([1, 3, 6, 12], var.period)
+    error_message = "Period must be 1, 3, 6, or 12 months."
+  }
 }
 
+variable "default_user" {
+  description = "Default user for SSH access"
+  type        = string
+  default     = "root"
+  
+  validation {
+    condition     = contains(["root", "admin"], var.default_user)
+    error_message = "Default user must be either 'root' or 'admin'."
+  }
+}
+
+# SSH Configuration (Optional)
+# Note: SSH keys in Contabo must be pre-created via the Secrets API
+# and referenced by their secretId
+variable "ssh_key_secret_id" {
+  description = "Contabo secret ID for SSH public key"
+  type        = number
+  default     = null
+}
+
+variable "root_password_secret_id" {
+  description = "Contabo secret ID for root password"
+  type        = number
+  default     = null
+}
+
+# Database Passwords (REQUIRED - use strong passwords)
 variable "postgres_password" {
   description = "PostgreSQL superuser password"
   type        = string

@@ -8,6 +8,11 @@ SSH_CMD := ssh -i $(SSH_KEY) root@$(VALIDATOR_IP)
 help: ## Show this help message
 	@echo "XRPL Validator Management Commands"
 	@echo ""
+	@echo "Deployment:"
+	@echo "  make deploy              - Run full deployment"
+	@echo "  make continue-deploy     - Continue interrupted deployment (assumes SSH works)"
+	@echo "  make fix-ssh             - Fix SSH access via API (manual key add may be needed)"
+	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 ssh: ## SSH into validator
@@ -123,12 +128,36 @@ deploy-keys: ## Deploy validator keys to server (automated)
 rotate-keys: build-validator-keys generate-keys deploy-keys ## Complete key rotation workflow
 
 deploy: ## Run deployment script
-	@./deploy.sh
+	@./validator-deploy.sh
+
+fix-ssh: ## Fix SSH access on running instance via API
+	@./fix-ssh-access.sh
+
+continue-deploy: ## Continue interrupted deployment (assumes SSH works, deploys Docker)
+	@echo "=== Continuing Validator Deployment ==="
+	@echo "Note: Assumes SSH access is working. If not, add SSH key manually first."
+	@echo ""
+	@echo "Step 1: Uploading and running setup scripts..."
+	@scp -i $(SSH_KEY) -o StrictHostKeyChecking=no scripts/setup-vm.sh root@$(VALIDATOR_IP):/root/
+	@scp -i $(SSH_KEY) -o StrictHostKeyChecking=no scripts/install-docker.sh root@$(VALIDATOR_IP):/root/
+	@$(SSH_CMD) 'bash /root/setup-vm.sh'
+	@$(SSH_CMD) 'bash /root/install-docker.sh'
+	@echo ""
+	@echo "Step 3: Creating directories and deploying Docker configs..."
+	@$(SSH_CMD) 'mkdir -p /opt/validator/config /opt/validator/data'
+	@scp -i $(SSH_KEY) -o StrictHostKeyChecking=no docker/docker-compose.yml root@$(VALIDATOR_IP):/opt/validator/
+	@scp -i $(SSH_KEY) -o StrictHostKeyChecking=no docker/rippled.cfg root@$(VALIDATOR_IP):/opt/validator/config/
+	@echo ""
+	@echo "Step 4: Starting rippled container..."
+	@$(SSH_CMD) 'cd /opt/validator && docker compose up -d'
+	@echo ""
+	@echo "✓ Deployment continued successfully!"
+	@echo "Check status with: make status"
 
 destroy: ## Destroy infrastructure (WARNING: irreversible)
 	@echo "WARNING: This will destroy all infrastructure!"
 	@read -p "Type 'destroy' to confirm: " confirm && [ "$$confirm" = "destroy" ]
-	@cd terraform && terraform destroy
+	@cd terraform && . .envrc && terraform destroy
 	@echo "✓ Infrastructure destroyed"
 
 clean: ## Clean local artifacts

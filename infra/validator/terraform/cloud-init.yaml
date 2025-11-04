@@ -4,6 +4,13 @@
 hostname: ${hostname}
 manage_etc_hosts: true
 
+# SSH key injection
+ssh_authorized_keys:
+  - ${ssh_pubkey}
+
+ssh_pwauth: false
+disable_root: false
+
 # System updates
 package_update: true
 package_upgrade: true
