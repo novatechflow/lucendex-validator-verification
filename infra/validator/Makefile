@@ -60,17 +60,17 @@ consensus: ## Show consensus participation
 
 restart: ## Restart rippled container
 	@echo "Restarting rippled..."
-	@$(SSH_CMD) "cd /opt/rippled && docker-compose restart"
+	@$(SSH_CMD) "cd /opt/validator && docker compose restart"
 	@echo "✓ Rippled restarted"
 
 stop: ## Stop rippled container
 	@echo "Stopping rippled..."
-	@$(SSH_CMD) "cd /opt/rippled && docker-compose stop"
+	@$(SSH_CMD) "cd /opt/validator && docker compose stop"
 	@echo "✓ Rippled stopped"
 
 start: ## Start rippled container
 	@echo "Starting rippled..."
-	@$(SSH_CMD) "cd /opt/rippled && docker-compose start"
+	@$(SSH_CMD) "cd /opt/validator && docker compose start"
 	@echo "✓ Rippled started"
 
 resources: ## Check VM resource usage
@@ -99,8 +99,8 @@ test-connectivity: ## Test XRPL peer connectivity
 backup: ## Backup validator configuration
 	@echo "Creating backup..."
 	@mkdir -p backups/$$(date +%Y%m%d_%H%M%S)
-	@scp -i $(SSH_KEY) root@$(VALIDATOR_IP):/opt/rippled/rippled.cfg backups/$$(date +%Y%m%d_%H%M%S)/
-	@scp -i $(SSH_KEY) root@$(VALIDATOR_IP):/opt/rippled/docker-compose.yml backups/$$(date +%Y%m%d_%H%M%S)/
+	@scp -i $(SSH_KEY) root@$(VALIDATOR_IP):/opt/validator/config/rippled.cfg backups/$$(date +%Y%m%d_%H%M%S)/
+	@scp -i $(SSH_KEY) root@$(VALIDATOR_IP):/opt/validator/docker-compose.yml backups/$$(date +%Y%m%d_%H%M%S)/
 	@echo "✓ Backup saved to backups/$$(date +%Y%m%d_%H%M%S)/"
 
 verify-backup: ## Verify latest backup integrity
@@ -109,7 +109,7 @@ verify-backup: ## Verify latest backup integrity
 
 update-config: ## Update rippled configuration
 	@echo "Uploading new configuration..."
-	@scp -i $(SSH_KEY) docker/rippled.cfg root@$(VALIDATOR_IP):/opt/rippled/
+	@scp -i $(SSH_KEY) docker/rippled.cfg root@$(VALIDATOR_IP):/opt/validator/config/
 	@echo "Configuration updated. Restart required: make restart"
 
 verify-image: ## Verify rippled Docker image authenticity
@@ -126,6 +126,22 @@ deploy-keys: ## Deploy validator keys to server (automated)
 	@./scripts/deploy-validator-keys.sh
 
 rotate-keys: build-validator-keys generate-keys deploy-keys ## Complete key rotation workflow
+
+# Domain verification with attestation
+validator-setup-domain: ## Generate offline keys with domain attestation
+	@./scripts/generate-offline-keys.sh
+
+validator-deploy-attestation: ## Deploy attestation to Cloudflare Pages
+	@./validator-attestation.sh
+
+validator-verify-domain: ## Verify domain verification is working
+	@echo "=== Checking xrp-ledger.toml ==="
+	@curl -s https://lucendex.com/.well-known/xrp-ledger.toml || echo "❌ TOML not accessible"
+	@echo ""
+	@echo "=== Checking validator manifest ==="
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info" | jq -r '.result.info.pubkey_validator' | xargs -I {} echo "Public Key: {}"
+	@echo ""
+	@echo "Visit: https://xrpl.org/xrp-ledger-toml-checker.html"
 
 deploy: ## Run deployment script
 	@./validator-deploy.sh
@@ -174,7 +190,7 @@ keys: ## Show validator keys (public key + seed)
 	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info 2>/dev/null | jq -r '.result.info.pubkey_validator // \"Not validating (tracking mode)\"'"
 	@echo ""
 	@echo "Validation Seed (from config - ⚠️  PRIVATE!):"
-	@$(SSH_CMD) "grep -A 1 '^\[validation_seed\]' /opt/rippled/rippled.cfg 2>/dev/null | tail -1 | xargs || echo 'No validation_seed in config'"
+	@$(SSH_CMD) "grep -A 1 '^\[validation_seed\]' /opt/validator/config/rippled.cfg 2>/dev/null | tail -1 | xargs || echo 'No validation_seed in config'"
 	@echo ""
 	@echo "Use public key for UNL registration & DNS TXT record"
 	@echo "⚠️  NEVER share the validation seed!"
@@ -182,7 +198,7 @@ keys: ## Show validator keys (public key + seed)
 
 config: ## Show full rippled configuration
 	@echo "=== rippled.cfg ==="
-	@$(SSH_CMD) "cat /opt/rippled/rippled.cfg"
+	@$(SSH_CMD) "cat /opt/validator/config/rippled.cfg"
 
 ledger-status: ## Show current and closed ledger
 	@echo "=== Current Ledger ==="
@@ -197,11 +213,11 @@ wipe-ledger-db: ## Nuclear option: wipe database and resync
 	@echo "⚠️  WARNING: This will DELETE all ledger data and resync from network!"
 	@read -p "Type 'wipe' to confirm: " confirm && [ "$$confirm" = "wipe" ]
 	@echo "Stopping and removing container..."
-	@$(SSH_CMD) "cd /opt/rippled && docker-compose down"
+	@$(SSH_CMD) "cd /opt/validator && docker compose down"
 	@echo "Removing database volume..."
-	@$(SSH_CMD) "docker volume rm rippled_rippled-db 2>/dev/null || docker volume rm rippled-db 2>/dev/null || true"
+	@$(SSH_CMD) "docker volume rm validator_rippled-data 2>/dev/null || true"
 	@echo "Starting rippled (will recreate volume)..."
-	@$(SSH_CMD) "cd /opt/rippled && docker-compose up -d"
+	@$(SSH_CMD) "cd /opt/validator && docker compose up -d"
 	@sleep 10
 	@echo "✓ Database volume wiped - node will resync from network"
 	@echo "Monitor with: make sync-status"

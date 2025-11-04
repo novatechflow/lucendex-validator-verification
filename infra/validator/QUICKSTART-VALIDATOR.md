@@ -89,7 +89,24 @@ TTL: 3600
 
 **Done!** The network will now display "Lucendex" as the validator operator.
 
-## Step 4: Verify Deployment
+## Step 4: Domain Attestation (Optional - Production)
+
+For production-grade domain verification with cryptographic attestation:
+
+```bash
+# Generate offline keys with attestation
+make validator-setup-domain
+
+# Deploy to Cloudflare Pages
+make validator-deploy-attestation
+
+# Verify it works
+make validator-verify-domain
+```
+
+This creates a two-way cryptographic link between validator and lucendex.com via xrp-ledger.toml with attestation.
+
+## Step 5: Verify Deployment
 
 ```bash
 # From infra/validator/ directory
