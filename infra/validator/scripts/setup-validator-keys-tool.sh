@@ -44,10 +44,20 @@ check_docker() {
     log_info "✓ Docker is available and running (Colima or Docker Desktop)"
 }
 
-pull_rippled_image() {
-    log_info "Pulling rippled Docker image..."
-    docker pull rippleci/rippled:latest
-    log_info "✓ rippled image ready"
+build_validator_keys_image() {
+    log_info "Building validator-keys Docker image..."
+    
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local docker_dir="${script_dir}/../docker"
+    
+    cd "${docker_dir}"
+    docker build \
+        --platform linux/amd64 \
+        -t validator-keys-tool:latest \
+        -f Dockerfile.validator-keys \
+        . >/dev/null 2>&1
+    
+    log_info "✓ validator-keys image built"
 }
 
 create_validator_keys_wrapper() {
@@ -60,17 +70,18 @@ create_validator_keys_wrapper() {
     cat > "${install_dir}/validator-keys" <<'EOF'
 #!/bin/bash
 # Wrapper script to run validator-keys inside Docker container
-# This allows running on ARM64 Macs without native compilation
+# Uses rippled Ubuntu package which includes validator-keys
 
-KEYS_DIR="${HOME}/.validator-keys"
+KEYS_DIR="${HOME}/.validator-keys-secure"
 mkdir -p "${KEYS_DIR}"
 
-# Run validator-keys inside rippled Docker container
-docker run --rm -it \
+# Run validator-keys from Ubuntu package
+docker run --rm \
+    --platform linux/amd64 \
     -v "${KEYS_DIR}:/keys" \
     -w /keys \
-    rippleci/rippled:latest \
-    /opt/ripple/bin/validator-keys "$@"
+    validator-keys-tool:latest \
+    "$@"
 EOF
     
     chmod +x "${install_dir}/validator-keys"
@@ -139,7 +150,7 @@ main() {
     log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
     check_docker
-    pull_rippled_image
+    build_validator_keys_image
     create_validator_keys_wrapper
     add_to_path
     verify_installation

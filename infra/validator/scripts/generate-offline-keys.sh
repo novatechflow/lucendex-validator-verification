@@ -29,10 +29,20 @@ check_prerequisites() {
         exit 1
     fi
     
-    if ! docker ps &>/dev/null; then
-        log_error "Docker not running"
-        log_info "Start: colima start"
-        exit 1
+    if ! docker ps &>/dev/null 2>&1; then
+        log_warn "Docker not running"
+        
+        # Try to start colima if available
+        if command -v colima &>/dev/null; then
+            log_info "Starting colima..."
+            colima start
+            sleep 3
+        else
+            log_error "Please start Docker:"
+            log_info "  colima start    # If using Colima"
+            log_info "  OR start Docker Desktop manually"
+            exit 1
+        fi
     fi
     
     # Check if validator-keys wrapper exists
@@ -82,24 +92,29 @@ generate_attestation() {
     
     cd "${KEYS_DIR}"
     
-    # Run set_domain and capture output
-    output=$(validator-keys set_domain "${DOMAIN}" --keyfile validator-keys.json 2>&1)
+    # Run set_domain (will warn if already set, but that's fine)
+    validator-keys set_domain "${DOMAIN}" --keyfile validator-keys.json &>/dev/null || true
     
-    # Extract attestation (hex string after "Attestation: ")
-    attestation=$(echo "$output" | grep "Attestation:" | awk '{print $2}')
+    # Get attestation output
+    attestation_output=$(validator-keys attest_domain --keyfile validator-keys.json 2>&1)
+    
+    # Parse attestation from output: attestation="HEX_STRING"
+    attestation=$(echo "$attestation_output" | grep 'attestation=' | cut -d'"' -f2)
     
     if [ -z "$attestation" ]; then
-        log_error "Failed to extract attestation"
-        echo "$output"
+        log_error "Failed to get attestation"
+        echo "$attestation_output"
         exit 1
     fi
     
-    # Extract public key
-    pubkey=$(echo "$output" | grep "Master public key:" | awk '{print $4}')
+    # Create token to get public key and validator token
+    token_output=$(validator-keys create_token --keyfile validator-keys.json 2>&1)
     
-    # Extract validator token (multi-line base64)
-    # The token section starts after "Validator Token:" and ends at next section or EOF
-    token=$(echo "$output" | sed -n '/^Validator Token:/,/^$/p' | tail -n +2 | grep -v '^$')
+    # Extract public key from comment line: # validator public key: nHU...
+    pubkey=$(echo "$token_output" | grep "# validator public key:" | awk '{print $5}')
+    
+    # Extract validator token (multi-line base64 after "[validator_token]")
+    token=$(echo "$token_output" | sed -n '/^\[validator_token\]/,/^$/p' | tail -n +2 | grep -v '^$')
     
     # Save extracted values
     echo "$attestation" > attestation.txt
@@ -172,17 +187,65 @@ show_summary() {
     echo ""
 }
 
+check_status() {
+    log_step "Checking current status..."
+    
+    local has_master=false
+    local has_attestation=false
+    local has_toml=false
+    local has_token=false
+    
+    # Check files
+    [[ -f "${KEYS_DIR}/validator-keys.json" ]] && has_master=true
+    [[ -f "${KEYS_DIR}/attestation.txt" ]] && has_attestation=true
+    [[ -f "${KEYS_DIR}/xrp-ledger.toml" ]] && has_toml=true
+    [[ -f "${KEYS_DIR}/validator_token.txt" ]] && has_token=true
+    
+    echo ""
+    echo "Status in ${KEYS_DIR}:"
+    [[ $has_master == true ]] && echo "  ✓ validator-keys.json (master key)" || echo "  ✗ validator-keys.json (master key)"
+    [[ $has_attestation == true ]] && echo "  ✓ attestation.txt" || echo "  ✗ attestation.txt"
+    [[ $has_toml == true ]] && echo "  ✓ xrp-ledger.toml" || echo "  ✗ xrp-ledger.toml"
+    [[ $has_token == true ]] && echo "  ✓ validator_token.txt" || echo "  ✗ validator_token.txt"
+    echo ""
+    
+    # If everything exists and attestation is valid
+    if [[ $has_master == true ]] && [[ $has_attestation == true ]] && [[ $has_toml == true ]]; then
+        # Verify attestation matches current setup
+        local current_pubkey=$(cat "${KEYS_DIR}/public_key.txt" 2>/dev/null || echo "")
+        local toml_pubkey=$(grep 'public_key' "${KEYS_DIR}/xrp-ledger.toml" | head -1 | cut -d'"' -f2)
+        
+        if [[ "$current_pubkey" == "$toml_pubkey" ]] && grep -q "attestation" "${KEYS_DIR}/xrp-ledger.toml"; then
+            log_info "✅ All done! Attestation already configured."
+            echo ""
+            log_info "Public Key: ${current_pubkey}"
+            log_info "Attestation: $(cat ${KEYS_DIR}/attestation.txt | head -c 32)..."
+            echo ""
+            log_info "Next step: make validator-deploy-attestation"
+            exit 0
+        fi
+    fi
+    
+    # Need to generate something
+    if [[ $has_master == false ]]; then
+        log_warn "Missing master key - will create new validator keys"
+        return 1
+    fi
+    
+    log_info "Using existing master key to generate attestation"
+    return 0
+}
+
 main() {
-    log_info "XRPL Validator Offline Key Generation"
+    log_info "XRPL Validator Domain Attestation Setup"
     log_info "Domain: ${DOMAIN}"
     log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     
     check_prerequisites
     
-    if check_existing_keys; then
-        log_info "Using existing keys"
-    else
+    # Check current status - exits if all done
+    if ! check_status; then
         create_new_keys
     fi
     

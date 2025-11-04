@@ -128,10 +128,11 @@ deploy-keys: ## Deploy validator keys to server (automated)
 rotate-keys: build-validator-keys generate-keys deploy-keys ## Complete key rotation workflow
 
 # Domain verification with attestation
-validator-setup-domain: ## Generate offline keys with domain attestation
+validator-setup-domain: ## Complete domain attestation workflow (generate + deploy)
 	@./scripts/generate-offline-keys.sh
+	@./validator-attestation.sh
 
-validator-deploy-attestation: ## Deploy attestation to Cloudflare Pages
+validator-deploy-attestation: ## Deploy attestation to Cloudflare Pages only
 	@./validator-attestation.sh
 
 validator-verify-domain: ## Verify domain verification is working
