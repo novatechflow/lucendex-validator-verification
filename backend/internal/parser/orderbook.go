@@ -71,16 +71,16 @@ func (p *OrderbookParser) ParseOfferCancel(tx map[string]interface{}) (ownerAcco
 
 // parseOfferCreate handles OfferCreate transaction
 func (p *OrderbookParser) parseOfferCreate(tx map[string]interface{}, ledgerIndex uint64, ledgerHash string) (*store.Offer, error) {
-	// Extract account (owner)
+	// Extract account (owner) - required for all offers
 	account, ok := tx["Account"].(string)
 	if !ok {
-		return nil, fmt.Errorf("missing Account field")
+		return p.createInvalidOffer(tx, ledgerIndex, ledgerHash, "missing Account field"), nil
 	}
 	
-	// Extract sequence
+	// Extract sequence - required for all offers
 	sequence, ok := tx["Sequence"]
 	if !ok {
-		return nil, fmt.Errorf("missing Sequence field")
+		return p.createInvalidOffer(tx, ledgerIndex, ledgerHash, "missing Sequence field"), nil
 	}
 	
 	offerSeq := int64(0)
@@ -92,19 +92,19 @@ func (p *OrderbookParser) parseOfferCreate(tx map[string]interface{}, ledgerInde
 	case int64:
 		offerSeq = v
 	default:
-		return nil, fmt.Errorf("invalid Sequence type")
+		return p.createInvalidOffer(tx, ledgerIndex, ledgerHash, "invalid Sequence type"), nil
 	}
 	
 	// Extract TakerPays (what taker pays = what maker receives)
 	takerPays, ok := tx["TakerPays"]
 	if !ok {
-		return nil, fmt.Errorf("missing TakerPays field")
+		return p.createInvalidOfferWithSeq(account, offerSeq, ledgerIndex, ledgerHash, "missing TakerPays field"), nil
 	}
 	
 	// Extract TakerGets (what taker gets = what maker pays)
 	takerGets, ok := tx["TakerGets"]
 	if !ok {
-		return nil, fmt.Errorf("missing TakerGets field")
+		return p.createInvalidOfferWithSeq(account, offerSeq, ledgerIndex, ledgerHash, "missing TakerGets field"), nil
 	}
 	
 	// Parse amounts
@@ -158,6 +158,45 @@ func (p *OrderbookParser) parseOfferCreate(tx map[string]interface{}, ledgerInde
 	}
 	
 	return offer, nil
+}
+
+// createInvalidOffer creates an offer record for unparseable transaction (no account/sequence)
+func (p *OrderbookParser) createInvalidOffer(tx map[string]interface{}, ledgerIndex uint64, ledgerHash string, reason string) *store.Offer {
+	return &store.Offer{
+		BaseAsset:     "UNKNOWN",
+		QuoteAsset:    "UNKNOWN",
+		Side:          "bid",
+		Price:         "1",
+		Amount:        "1",
+		OfferSequence: 0,
+		OwnerAccount:  "UNKNOWN",
+		LedgerIndex:   int64(ledgerIndex),
+		LedgerHash:    ledgerHash,
+		Status:        "invalid_parse",
+		Meta: map[string]interface{}{
+			"error":  reason,
+			"tx_raw": tx,
+		},
+	}
+}
+
+// createInvalidOfferWithSeq creates an offer record for unparseable transaction (has account/sequence)
+func (p *OrderbookParser) createInvalidOfferWithSeq(account string, sequence int64, ledgerIndex uint64, ledgerHash string, reason string) *store.Offer {
+	return &store.Offer{
+		BaseAsset:     "UNKNOWN",
+		QuoteAsset:    "UNKNOWN",
+		Side:          "bid",
+		Price:         "1",
+		Amount:        "1",
+		OfferSequence: sequence,
+		OwnerAccount:  account,
+		LedgerIndex:   int64(ledgerIndex),
+		LedgerHash:    ledgerHash,
+		Status:        "invalid_parse",
+		Meta: map[string]interface{}{
+			"error": reason,
+		},
+	}
 }
 
 // calculatePrice computes price as quote/base

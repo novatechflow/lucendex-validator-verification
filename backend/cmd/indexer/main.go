@@ -18,6 +18,7 @@ import (
 var (
 	rippledWS = flag.String("rippled-ws", getEnv("RIPPLED_WS", "ws://localhost:6006"), "rippled Full-History WebSocket URL")
 	dbConnStr = flag.String("db", getEnv("DATABASE_URL", ""), "PostgreSQL connection string")
+	verbose   = flag.Bool("v", getEnv("VERBOSE", "") == "true", "Enable verbose logging")
 )
 
 // getEnv retrieves environment variable or returns default
@@ -26,6 +27,13 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// logVerbose logs only when verbose mode is enabled
+func logVerbose(format string, v ...interface{}) {
+	if *verbose {
+		log.Printf(format, v...)
+	}
 }
 
 func main() {
@@ -121,6 +129,8 @@ func processLedger(
 	
 	// Process each transaction
 	for _, tx := range ledger.Transactions {
+		logVerbose("Processing tx %s (type: %s)", tx.Hash, tx.TransactionType)
+		
 		// Convert transaction to map for parser
 		txMap := make(map[string]interface{})
 		txBytes, err := json.Marshal(tx)
@@ -135,7 +145,8 @@ func processLedger(
 		}
 		
 		// Try AMM parser
-		if pool, err := ammParser.ParseTransaction(txMap, ledger.LedgerIndex, ledger.LedgerHash); err != nil {
+		pool, err := ammParser.ParseTransaction(txMap, ledger.LedgerIndex, ledger.LedgerHash)
+		if err != nil {
 			log.Printf("AMM parser error on tx %s: %v", tx.Hash, err)
 		} else if pool != nil {
 			if err := db.UpsertAMMPool(ctx, pool); err != nil {
@@ -143,30 +154,39 @@ func processLedger(
 			} else {
 				log.Printf("  ✓ AMM pool updated: %s/%s", pool.Asset1, pool.Asset2)
 			}
+		} else {
+			logVerbose("  Skipped (not AMM transaction)")
 		}
 		
 		// Try orderbook parser
-		if offer, err := orderbookParser.ParseTransaction(txMap, ledger.LedgerIndex, ledger.LedgerHash); err != nil {
+		offer, err := orderbookParser.ParseTransaction(txMap, ledger.LedgerIndex, ledger.LedgerHash)
+		if err != nil {
 			log.Printf("Orderbook parser error on tx %s: %v", tx.Hash, err)
 		} else if offer != nil {
 			if err := db.UpsertOffer(ctx, offer); err != nil {
 				log.Printf("Failed to upsert offer: %v", err)
 			} else {
-				log.Printf("  ✓ Offer created: %s/%s @ %s", offer.BaseAsset, offer.QuoteAsset, offer.Price)
+				if offer.Status == "invalid_parse" {
+					logVerbose("  ⚠ Invalid offer stored: %v", offer.Meta["error"])
+				} else {
+					log.Printf("  ✓ Offer created: %s/%s @ %s", offer.BaseAsset, offer.QuoteAsset, offer.Price)
+				}
 			}
+		} else {
+			logVerbose("  Skipped (not orderbook transaction)")
 		}
 		
 		// Check for OfferCancel
 		if tx.TransactionType == "OfferCancel" {
 			account, seq, err := orderbookParser.ParseOfferCancel(txMap)
-			if err != nil {
-				log.Printf("Failed to parse OfferCancel: %v", err)
-			} else {
+			if err == nil {
 				if err := db.CancelOffer(ctx, account, seq, int64(ledger.LedgerIndex)); err != nil {
 					log.Printf("Failed to cancel offer: %v", err)
 				} else {
 					log.Printf("  ✓ Offer cancelled: account=%s seq=%d", account, seq)
 				}
+			} else {
+				logVerbose("  OfferCancel parse error: %v", err)
 			}
 		}
 	}

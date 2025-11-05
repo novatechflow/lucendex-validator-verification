@@ -137,20 +137,47 @@ func (c *Client) readMessages() {
 
 // handleMessage processes incoming messages
 func (c *Client) handleMessage(data []byte) {
-	// Try parsing as ledger response
-	var ledger LedgerResponse
-	if err := json.Unmarshal(data, &ledger); err == nil {
-		if ledger.Type == "ledgerClosed" && ledger.Validated {
+	// Try parsing as ledger close notification (no "type" field, just ledger data)
+	var notification struct {
+		LedgerIndex uint64 `json:"ledger_index"`
+		LedgerHash  string `json:"ledger_hash"`
+		LedgerTime  uint64 `json:"ledger_time"`
+		FeeBase     int    `json:"fee_base"`
+	}
+	
+	if err := json.Unmarshal(data, &notification); err == nil {
+		if notification.LedgerIndex > 0 && notification.FeeBase > 0 {
+			log.Printf("Received ledger close notification for ledger %d", notification.LedgerIndex)
+			// Fetch full ledger with transactions
+			go c.fetchLedger(notification.LedgerIndex)
+			return
+		}
+	}
+	
+	// Try parsing as ledger command response
+	var cmdResp LedgerCommandResponse
+	if err := json.Unmarshal(data, &cmdResp); err == nil {
+		if cmdResp.Status == "success" && cmdResp.Result.Validated {
+			ledger := &LedgerResponse{
+				Type:         "ledgerClosed",
+				LedgerIndex:  cmdResp.Result.LedgerIndex,
+				LedgerHash:   cmdResp.Result.LedgerHash,
+				LedgerTime:   cmdResp.Result.Ledger.CloseTime,
+				Validated:    true,
+				Transactions: cmdResp.Result.Ledger.Transactions,
+				TxnCount:     len(cmdResp.Result.Ledger.Transactions),
+			}
+			
 			// Send to channel
 			select {
-			case c.ledgerChan <- &ledger:
+			case c.ledgerChan <- ledger:
 			default:
 				log.Printf("Warning: ledger channel full, dropping ledger %d", ledger.LedgerIndex)
 			}
 			
 			// Call callback if set
 			if c.onLedger != nil {
-				c.onLedger(&ledger)
+				c.onLedger(ledger)
 			}
 			return
 		}
@@ -275,6 +302,33 @@ func (c *Client) Close() error {
 	}
 	
 	return nil
+}
+
+// fetchLedger requests full ledger data with transactions
+func (c *Client) fetchLedger(ledgerIndex uint64) {
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+	
+	if conn == nil {
+		log.Printf("Not connected, skipping ledger %d", ledgerIndex)
+		return
+	}
+	
+	req := map[string]interface{}{
+		"command":       "ledger",
+		"ledger_index":  ledgerIndex,
+		"transactions":  true,
+		"expand":        true,
+	}
+	
+	c.mu.Lock()
+	err := conn.WriteJSON(req)
+	c.mu.Unlock()
+	
+	if err != nil {
+		log.Printf("Failed to request ledger %d: %v", ledgerIndex, err)
+	}
 }
 
 // GetServerInfo requests server information

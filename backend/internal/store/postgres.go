@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -108,15 +109,16 @@ type Offer struct {
 	LedgerIndex   int64
 	LedgerHash    string
 	Status        string
+	Meta          map[string]interface{}
 }
 
 // UpsertOffer inserts or updates an offer
 func (s *Store) UpsertOffer(ctx context.Context, offer *Offer) error {
 	query := `
 		INSERT INTO core.orderbook_state
-			(base_asset, quote_asset, side, price, amount, offer_sequence, owner_account, expiration, quality, ledger_index, ledger_hash, status)
+			(base_asset, quote_asset, side, price, amount, offer_sequence, owner_account, expiration, quality, ledger_index, ledger_hash, status, meta)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb)
 		ON CONFLICT (owner_account, offer_sequence)
 		DO UPDATE SET
 			price = EXCLUDED.price,
@@ -124,11 +126,24 @@ func (s *Store) UpsertOffer(ctx context.Context, offer *Offer) error {
 			status = EXCLUDED.status,
 			ledger_index = EXCLUDED.ledger_index,
 			ledger_hash = EXCLUDED.ledger_hash,
+			meta = EXCLUDED.meta,
 			updated_at = now()
 		RETURNING id
 	`
 	
-	err := s.db.QueryRowContext(ctx, query,
+	// Convert Meta map to JSON
+	var metaJSON []byte
+	var err error
+	if offer.Meta != nil {
+		metaJSON, err = json.Marshal(offer.Meta)
+		if err != nil {
+			return fmt.Errorf("failed to marshal meta: %w", err)
+		}
+	} else {
+		metaJSON = []byte("{}")
+	}
+	
+	err = s.db.QueryRowContext(ctx, query,
 		offer.BaseAsset,
 		offer.QuoteAsset,
 		offer.Side,
@@ -141,6 +156,7 @@ func (s *Store) UpsertOffer(ctx context.Context, offer *Offer) error {
 		offer.LedgerIndex,
 		offer.LedgerHash,
 		offer.Status,
+		string(metaJSON),
 	).Scan(&offer.ID)
 	
 	if err != nil {

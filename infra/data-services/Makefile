@@ -14,7 +14,7 @@ help:
 	@echo "  make status                - Show status of all services"
 	@echo "  make version               - Show service versions"
 	@echo "  make services              - List running Docker containers"
-	@echo "  make restart               - Restart all services"
+	@echo "  make restart-all           - Restart all services on data nodes"
 	@echo "  make start                 - Start all services"
 	@echo "  make stop                  - Stop all services"
 	@echo "  make ssh                   - SSH into data services VM"
@@ -66,6 +66,8 @@ help:
 	@echo "  make indexer-status        - Check indexer status"
 	@echo "  make indexer-logs          - Follow indexer logs"
 	@echo "  make indexer-restart       - Restart indexer"
+	@echo "  make indexer-verbose-on    - Enable verbose logging"
+	@echo "  make indexer-verbose-off   - Disable verbose logging"
 	@echo ""
 	@echo "⚠️  Admin (Destructive - Requires cd infra/data-services/):"
 	@echo "  make wipe-ledger-db-api    - Wipe API node database"
@@ -182,12 +184,33 @@ start:
 		"cd /opt/lucendex/docker && docker compose up -d"
 	@echo "✓ Services started"
 
-# Restart all services (soft restart, doesn't remount volumes)
-restart:
-	@echo "Restarting all services..."
+# Restart all services on data nodes (soft restart, doesn't remount volumes)
+restart-all:
+	@echo "Restarting all services on data nodes..."
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
 		"cd /opt/lucendex/docker && docker compose restart"
-	@echo "✓ Services restarted"
+	@echo "✓ All services restarted"
+
+# Restart PostgreSQL only
+restart-postgres:
+	@echo "Restarting PostgreSQL..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker restart lucendex-postgres"
+	@echo "✓ PostgreSQL restarted"
+
+# Restart API node only
+restart-api:
+	@echo "Restarting API node..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker restart lucendex-rippled-api"
+	@echo "✓ API node restarted"
+
+# Restart History node only
+restart-history:
+	@echo "Restarting History node..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"docker restart lucendex-rippled-history"
+	@echo "✓ History node restarted"
 
 # Check rippled API sync status
 sync-status-api:
@@ -224,15 +247,56 @@ resources:
 # Deploy indexer binary and systemd service
 indexer-deploy:
 	@echo "Building indexer binary..."
-	@cd ../../backend && go build -o indexer ./cmd/indexer
-	@echo "Copying indexer to VM..."
+	@cd ../../backend && GOOS=linux GOARCH=amd64 go build -o indexer ./cmd/indexer
+	@echo "✓ Binary built"
+	@echo "Creating indexer .env file..."
+	@if [ ! -f terraform/.envrc ]; then \
+		echo "❌ terraform/.envrc not found"; \
+		exit 1; \
+	fi
+	@. terraform/.envrc && \
+		echo "DATABASE_URL=postgresql://indexer_rw:$$TF_VAR_indexer_db_password@127.0.0.1:5432/lucendex?sslmode=require" > /tmp/indexer.env && \
+		echo "RIPPLED_WS=ws://localhost:6006" >> /tmp/indexer.env
+	@echo "✓ .env created"
+	@echo "Stopping indexer..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"systemctl stop indexer 2>/dev/null || true"
+	@echo "Copying files to VM..."
 	@scp -i terraform/data_services_ssh_key ../../backend/indexer root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/
-	@echo "Copying systemd service..."
+	@scp -i terraform/data_services_ssh_key /tmp/indexer.env root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/.env
 	@scp -i terraform/data_services_ssh_key docker/indexer.service root@$$(cd terraform && terraform output -raw data_services_ip):/etc/systemd/system/
+	@scp -i terraform/data_services_ssh_key docker/indexer.logrotate root@$$(cd terraform && terraform output -raw data_services_ip):/etc/logrotate.d/indexer
+	@rm /tmp/indexer.env
+	@echo "✓ Files copied"
+	@echo "Setting permissions..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"chmod +x /opt/lucendex/indexer && chmod 600 /opt/lucendex/.env && mkdir -p /opt/lucendex/logs"
+	@echo "✓ Permissions set"
 	@echo "Enabling and starting indexer..."
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
 		"systemctl daemon-reload && systemctl enable indexer && systemctl start indexer"
 	@echo "✓ Indexer deployed and running"
+
+# Stop indexer
+indexer-stop:
+	@echo "Stopping indexer..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"systemctl stop indexer"
+	@echo "✓ Indexer stopped"
+
+# Start indexer
+indexer-start:
+	@echo "Starting indexer..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"systemctl start indexer"
+	@echo "✓ Indexer started"
+
+# Restart indexer
+indexer-restart:
+	@echo "Restarting indexer..."
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		"systemctl restart indexer"
+	@echo "✓ Indexer restarted"
 
 # Check indexer status
 indexer-status:
@@ -243,14 +307,53 @@ indexer-status:
 # View indexer logs
 indexer-logs:
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
-		"tail -f /opt/lucendex/logs/indexer.log"
+		"tail -f /opt/lucendex/logs/indexer.error.log"
 
-# Restart indexer
-indexer-restart:
-	@echo "Restarting indexer..."
-	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
-		"systemctl restart indexer"
-	@echo "✓ Indexer restarted"
+# Update indexer .env file
+update-indexer-env:
+	@echo "Updating indexer .env file..."
+	@if [ ! -f terraform/.envrc ]; then \
+		echo "❌ terraform/.envrc not found"; \
+		exit 1; \
+	fi
+	@. terraform/.envrc && \
+		echo "DATABASE_URL=postgresql://indexer_rw:$$TF_VAR_indexer_db_password@127.0.0.1:5432/lucendex?sslmode=require" > /tmp/indexer.env && \
+		echo "RIPPLED_WS=ws://localhost:6006" >> /tmp/indexer.env
+	@scp -i terraform/data_services_ssh_key /tmp/indexer.env root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/.env
+	@rm /tmp/indexer.env
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) "chmod 600 /opt/lucendex/.env"
+	@echo "✓ Indexer .env updated. Restart required: make indexer-restart"
+
+# Enable verbose logging
+indexer-verbose-on:
+	@echo "Enabling verbose logging..."
+	@if [ ! -f terraform/.envrc ]; then \
+		echo "❌ terraform/.envrc not found"; \
+		exit 1; \
+	fi
+	@. terraform/.envrc && \
+		echo "DATABASE_URL=postgresql://indexer_rw:$$TF_VAR_indexer_db_password@127.0.0.1:5432/lucendex?sslmode=require" > /tmp/indexer.env && \
+		echo "RIPPLED_WS=ws://localhost:6006" >> /tmp/indexer.env && \
+		echo "VERBOSE=true" >> /tmp/indexer.env
+	@scp -i terraform/data_services_ssh_key /tmp/indexer.env root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/.env
+	@rm /tmp/indexer.env
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) "chmod 600 /opt/lucendex/.env"
+	@echo "✓ Verbose logging enabled. Restart required: make indexer-restart"
+
+# Disable verbose logging
+indexer-verbose-off:
+	@echo "Disabling verbose logging..."
+	@if [ ! -f terraform/.envrc ]; then \
+		echo "❌ terraform/.envrc not found"; \
+		exit 1; \
+	fi
+	@. terraform/.envrc && \
+		echo "DATABASE_URL=postgresql://indexer_rw:$$TF_VAR_indexer_db_password@127.0.0.1:5432/lucendex?sslmode=require" > /tmp/indexer.env && \
+		echo "RIPPLED_WS=ws://localhost:6006" >> /tmp/indexer.env
+	@scp -i terraform/data_services_ssh_key /tmp/indexer.env root@$$(cd terraform && terraform output -raw data_services_ip):/opt/lucendex/.env
+	@rm /tmp/indexer.env
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) "chmod 600 /opt/lucendex/.env"
+	@echo "✓ Verbose logging disabled. Restart required: make indexer-restart"
 
 # Rotate database passwords
 rotate-passwords:

@@ -70,6 +70,23 @@ type SubscribeResponse struct {
 	ErrorMessage  string `json:"error_message,omitempty"`
 }
 
+// LedgerCommandResponse wraps the ledger command response
+type LedgerCommandResponse struct {
+	Result struct {
+		Ledger struct {
+			LedgerIndex   uint64        `json:"ledger_index,string"`
+			LedgerHash    string        `json:"ledger_hash"`
+			CloseTime     uint64        `json:"close_time"`
+			Validated     bool          `json:"validated"`
+			Transactions  []Transaction `json:"transactions"`
+		} `json:"ledger"`
+		LedgerHash  string `json:"ledger_hash"`
+		LedgerIndex uint64 `json:"ledger_index"`
+		Validated   bool   `json:"validated"`
+	} `json:"result"`
+	Status string `json:"status"`
+}
+
 // ServerInfoRequest requests server information
 type ServerInfoRequest struct {
 	Command string `json:"command"`
