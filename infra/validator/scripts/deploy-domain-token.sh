@@ -59,20 +59,27 @@ ssh -i ../terraform/validator_ssh_key root@"${VALIDATOR_IP}" \
 log_info "✓ Backup created"
 echo ""
 
-# Remove old validator token section
-log_step "Updating rippled.cfg with domain-enabled token..."
-ssh -i ../terraform/validator_ssh_key root@"${VALIDATOR_IP}" \
-    "sed -i '/^# Validator Configuration/,/^$/d; /^\[validator_token\]/,/^$/d' /opt/validator/config/rippled.cfg"
+# Update local rippled.cfg first
+log_step "Updating local rippled.cfg with domain-enabled token..."
+LOCAL_CFG="${SCRIPT_DIR}/../docker/rippled.cfg"
 
-# Append new validator token
-ssh -i ../terraform/validator_ssh_key root@"${VALIDATOR_IP}" "cat >> /opt/validator/config/rippled.cfg << 'EOFCONFIG'
+# Remove old validator token section from local file
+sed -i '' '/^# Validator Configuration/,/^$/d; /^\[validator_token\]/,/^$/d; /^# \[validator_token\]/,/^# NUY/d' "$LOCAL_CFG"
+
+# Append new validator token to local file
+cat >> "$LOCAL_CFG" << EOFLOCAL
 
 # Validator Configuration (Production - with domain=${DOMAIN})
 ${TOKEN}
-EOFCONFIG
-"
+EOFLOCAL
 
-log_info "✓ rippled.cfg updated"
+log_info "✓ Local rippled.cfg updated"
+
+# Deploy to server
+log_step "Deploying to validator server..."
+scp -i ../terraform/validator_ssh_key "$LOCAL_CFG" root@"${VALIDATOR_IP}":/opt/validator/config/rippled.cfg
+
+log_info "✓ Server rippled.cfg updated"
 echo ""
 
 # Restart validator
