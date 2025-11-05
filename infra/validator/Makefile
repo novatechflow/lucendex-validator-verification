@@ -136,19 +136,23 @@ deploy-keys: ## Deploy validator keys to server (automated)
 rotate-keys: build-validator-keys generate-keys deploy-keys ## Complete key rotation workflow
 
 # Domain verification with attestation
-validator-setup-domain: ## Complete domain attestation workflow (generate + deploy)
+validator-setup-domain: ## Complete domain attestation workflow (generate + deploy + link)
 	@./scripts/generate-offline-keys.sh
+	@./scripts/deploy-domain-token.sh
 	@./validator-attestation.sh
+
+validator-deploy-token: ## Deploy domain token to validator server only
+	@./scripts/deploy-domain-token.sh
 
 validator-deploy-attestation: ## Deploy attestation to Cloudflare Pages only
 	@./validator-attestation.sh
 
 validator-verify-domain: ## Verify domain verification is working
 	@echo "=== Checking xrp-ledger.toml ==="
-	@curl -s https://lucendex.com/.well-known/xrp-ledger.toml || echo "❌ TOML not accessible"
+	@curl -s https://lucendex.com/.well-known/xrp-ledger.toml | grep -q attestation && echo "✅ Attestation present" || echo "❌ No attestation"
 	@echo ""
 	@echo "=== Checking validator manifest ==="
-	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled server_info" | jq -r '.result.info.pubkey_validator' | xargs -I {} echo "Public Key: {}"
+	@$(SSH_CMD) "docker exec rippled /opt/ripple/bin/rippled validator_info 2>/dev/null" | grep '"domain"' || echo "❌ No domain in manifest"
 	@echo ""
 	@echo "Visit: https://xrpl.org/xrp-ledger-toml-checker.html"
 
