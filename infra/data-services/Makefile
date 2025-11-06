@@ -306,6 +306,15 @@ indexer-status:
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
 		"/opt/lucendex/indexer -version && systemctl status indexer --no-pager"
 
+# Check indexer sync status
+indexer-sync-status:
+	@echo "=== Indexer Sync Status ==="
+	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \
+		'docker exec lucendex-postgres psql -U postgres -d lucendex -t -c "SELECT ledger_index, close_time_human, transaction_count, processing_duration_ms FROM core.ledger_checkpoints ORDER BY ledger_index DESC LIMIT 1;" && \
+		echo "" && \
+		docker exec lucendex-rippled-history rippled server_info | jq -r ".result.info.validated_ledger.seq" | xargs -I{} echo "Current validated ledger: {}" && \
+		docker exec lucendex-postgres psql -U postgres -d lucendex -t -c "SELECT ledger_index FROM core.ledger_checkpoints ORDER BY ledger_index DESC LIMIT 1;" | xargs -I{} echo "Last indexed ledger: {}"'
+
 # View indexer logs
 indexer-logs:
 	@ssh -i terraform/data_services_ssh_key root@$$(cd terraform && terraform output -raw data_services_ip) \

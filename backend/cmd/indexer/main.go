@@ -102,110 +102,22 @@ func main() {
 	defer client.Close()
 	log.Printf("✓ Connected to rippled")
 	
-	// Get current ledger index to detect gaps
-	serverInfo, err := client.GetServerInfo()
-	if err != nil {
-		log.Fatalf("Failed to get server info: %v", err)
-	}
-	currentLedger := serverInfo.Result.Info.ValidatedLedger.Seq
-	log.Printf("Current validated ledger: %d", currentLedger)
-	
-	// Subscribe to ledger stream FIRST (Fix #1: prevent missing ledgers during backfill)
+	// Subscribe to ledger stream
 	if err := client.Subscribe(); err != nil {
 		log.Fatalf("Failed to subscribe to ledger stream: %v", err)
 	}
 	log.Printf("✓ Subscribed to ledger stream")
 	
+	// Log gap information if checkpoint exists
+	if checkpoint != nil {
+		log.Printf("Resuming from checkpoint at ledger %d", checkpoint.LedgerIndex)
+	} else {
+		log.Printf("No checkpoint found - starting fresh")
+	}
+	
 	// Create parsers for live processing
 	ammParser := parser.NewAMMParser()
 	orderbookParser := parser.NewOrderbookParser()
-	
-	// Check for gaps and backfill in background if needed
-	if checkpoint != nil {
-		log.Printf("Found checkpoint at ledger %d (hash: %s)", checkpoint.LedgerIndex, checkpoint.LedgerHash)
-		
-		gap := currentLedger - uint64(checkpoint.LedgerIndex)
-		if gap > 1 {
-			// Smart backfill threshold
-			const smallGapThreshold = 1000 // ~50 minutes of ledgers
-			missingCount := gap - 1
-			
-			// Determine backfill start point (respect START_LEDGER cutoff)
-			backfillStart := uint64(checkpoint.LedgerIndex + 1)
-			if backfillStart < *startLedger {
-				backfillStart = *startLedger
-				log.Printf("Respecting START_LEDGER cutoff: %d", *startLedger)
-			}
-			
-			if missingCount > smallGapThreshold {
-				log.Printf("⚠ Large gap detected: %d ledgers", missingCount)
-				log.Printf("Skipping backfill - resuming from current ledger")
-				log.Printf("Partner orders can be verified on-demand in M3 Partner API")
-			} else if backfillStart >= currentLedger {
-				log.Printf("✓ All missing ledgers before START_LEDGER cutoff - resuming from current")
-			} else {
-				// Small gap - backfill for continuity
-				log.Printf("⚠ Small gap detected: %d ledgers (%d to %d)", missingCount, backfillStart, currentLedger-1)
-				log.Printf("Starting background backfill...")
-				
-				go func() {
-					backfillClient := xrpl.NewClientWithBuffer(*rippledWS, 10000)
-					if err := backfillClient.Connect(); err != nil {
-						log.Printf("Failed to connect backfill client: %v", err)
-						return
-					}
-					defer backfillClient.Close()
-					
-					backfillParser := parser.NewAMMParser()
-					backfillOrderbookParser := parser.NewOrderbookParser()
-					
-					backfillStartTime := time.Now()
-					backfillCount := 0
-					backfillErrors := 0
-					
-					for i := backfillStart; i < currentLedger; i++ {
-						var ledger *xrpl.LedgerResponse
-						var err error
-						for retry := 0; retry < 3; retry++ {
-							ledger, err = backfillClient.FetchLedgerSync(i)
-							if err == nil {
-								break
-							}
-							log.Printf("Backfill retry %d/3 for ledger %d: %v", retry+1, i, err)
-							time.Sleep(time.Second * time.Duration(retry+1))
-						}
-						
-						if err != nil {
-							log.Printf("❌ Failed to backfill ledger %d after 3 retries - STOPPING", i)
-							return
-						}
-						
-						if err := processLedger(ctx, db, ledger, backfillParser, backfillOrderbookParser); err != nil {
-							log.Printf("Error processing backfill ledger %d: %v", i, err)
-							backfillErrors++
-						} else {
-							backfillCount++
-						}
-						
-						if backfillCount%100 == 0 {
-							elapsed := time.Since(backfillStartTime)
-							remaining := currentLedger - i
-							eta := time.Duration(float64(elapsed)/float64(backfillCount)*float64(remaining))
-							log.Printf("Backfill: %d/%d (%.1f%%) - ETA: %v", 
-								backfillCount, missingCount, float64(backfillCount)/float64(missingCount)*100, eta)
-						}
-					}
-					
-					log.Printf("✓ Backfill complete: %d ledgers in %v (errors: %d)", 
-						backfillCount, time.Since(backfillStartTime), backfillErrors)
-				}()
-			}
-		} else {
-			log.Printf("✓ No gap detected - indexer is up to date")
-		}
-	} else {
-		log.Printf("No checkpoint found - starting from current ledger %d", currentLedger)
-	}
 	
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
