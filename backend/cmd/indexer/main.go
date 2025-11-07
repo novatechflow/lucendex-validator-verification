@@ -92,7 +92,21 @@ func main() {
 		log.Fatalf("Failed to get last checkpoint: %v", err)
 	}
 	
-	// Connect to rippled
+	// Get current ledger via HTTP RPC (before WebSocket to avoid conflict)
+	rpcURL := "http://localhost:51237" // History node RPC
+	serverInfo, err := xrpl.GetServerInfoHTTP(rpcURL)
+	if err != nil {
+		log.Printf("Warning: Failed to get server info via HTTP: %v", err)
+		log.Printf("Continuing without gap detection...")
+	}
+	
+	var currentLedger uint64
+	if serverInfo != nil {
+		currentLedger = serverInfo.Result.Info.ValidatedLedger.Seq
+		log.Printf("Current validated ledger: %d", currentLedger)
+	}
+	
+	// Connect to rippled WebSocket
 	log.Printf("Connecting to rippled...")
 	client := xrpl.NewClient(*rippledWS)
 	
@@ -108,8 +122,52 @@ func main() {
 	}
 	log.Printf("✓ Subscribed to ledger stream")
 	
-	// Log gap information if checkpoint exists
-	if checkpoint != nil {
+	// Detect gap and backfill if needed
+	if checkpoint != nil && currentLedger > 0 {
+		gap := currentLedger - uint64(checkpoint.LedgerIndex)
+		if gap > 1 {
+			const historyRetention = 2048 // History node retention
+			missingCount := gap - 1
+			
+			if missingCount <= historyRetention {
+				log.Printf("⚠ Gap detected: %d ledgers (within history)", missingCount)
+				log.Printf("Starting background backfill...")
+				
+				// Backfill in background
+				go func() {
+					backfillClient := xrpl.NewClientWithBuffer(*rippledWS, 10000)
+					if err := backfillClient.Connect(); err != nil {
+						log.Printf("Failed to connect backfill client: %v", err)
+						return
+					}
+					defer backfillClient.Close()
+					
+					for i := uint64(checkpoint.LedgerIndex + 1); i < currentLedger; i++ {
+						ledger, err := backfillClient.FetchLedgerSync(i)
+						if err != nil {
+							log.Printf("Failed to backfill ledger %d: %v", i, err)
+							continue
+						}
+						
+						if err := processLedger(ctx, db, ledger, parser.NewAMMParser(), parser.NewOrderbookParser()); err != nil {
+							log.Printf("Error processing backfill ledger %d: %v", i, err)
+						}
+						
+						if i%100 == 0 {
+							log.Printf("Backfill progress: %d/%d ledgers", i-uint64(checkpoint.LedgerIndex), missingCount)
+						}
+					}
+					
+					log.Printf("✓ Backfill complete: %d ledgers", missingCount)
+				}()
+			} else {
+				log.Printf("⚠ Large gap detected: %d ledgers (> history retention)", missingCount)
+				log.Printf("Skipping backfill - resuming from current ledger")
+			}
+		} else {
+			log.Printf("✓ No gap detected - resuming from ledger %d", checkpoint.LedgerIndex+1)
+		}
+	} else if checkpoint != nil {
 		log.Printf("Resuming from checkpoint at ledger %d", checkpoint.LedgerIndex)
 	} else {
 		log.Printf("No checkpoint found - starting fresh")

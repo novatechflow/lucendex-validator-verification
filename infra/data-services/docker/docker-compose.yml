@@ -22,11 +22,11 @@ services:
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     networks:
       - lucendex
-    # Resource limits - OPTIMIZED for 64GB RAM VM
+    # Resource limits - OPTIMIZED for 64GB RAM + 16GB zram
     deploy:
       resources:
         limits:
-          memory: 6g
+          memory: 3g
         reservations:
           memory: 2g
     healthcheck:
@@ -42,6 +42,7 @@ services:
     image: rippleci/rippled@sha256:467dde2bf955dba05aafb2f6020bfd8eacf64cd07305b41d7dfc3c8e12df342d
     container_name: lucendex-rippled-api
     restart: always
+    init: true
     volumes:
       - rippled-api-data:/var/lib/rippled
       - rippled-api-logs:/var/log/rippled
@@ -52,15 +53,15 @@ services:
       - "51235:51235"  # Peer
     networks:
       - lucendex
-    # Resource limits - OPTIMIZED for 16-core/64GB RAM VM
+    # Resource limits - OPTIMIZED for 16-core/64GB RAM + 16GB zram
     deploy:
       resources:
         limits:
           cpus: '6.0'
-          memory: 16g
+          memory: 28g
         reservations:
           cpus: '3.0'
-          memory: 8g
+          memory: 16g
     # File descriptor limits
     ulimits:
       nofile:
@@ -84,6 +85,7 @@ services:
     image: rippleci/rippled@sha256:467dde2bf955dba05aafb2f6020bfd8eacf64cd07305b41d7dfc3c8e12df342d
     container_name: lucendex-rippled-history
     restart: always
+    init: true
     volumes:
       - rippled-history-data:/var/lib/rippled
       - rippled-history-logs:/var/log/rippled
@@ -93,12 +95,12 @@ services:
       - "51236:51236"  # Peer
     networks:
       - lucendex
-    # Resource limits - OPTIMIZED for 16-core/64GB RAM VM (full history needs most RAM)
+    # Resource limits - OPTIMIZED for 16-core/64GB RAM + 16GB zram (history needs most RAM)
     deploy:
       resources:
         limits:
           cpus: '8.0'
-          memory: 40g
+          memory: 36g
         reservations:
           cpus: '4.0'
           memory: 24g

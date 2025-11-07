@@ -23,17 +23,16 @@ services:
       - SETGID
       - SETUID
     
-    # Resource limits - OPTIMIZED for 8-core/24GB RAM VM
-    # Reduced to 18g after OOM kill at 21g
-    # Leaves 6GB for OS + zram swap
+    # Resource limits - OPTIMIZED for 4-core/24GB RAM VM
+    # Increased for faster RocksDB sync (reduce after sync complete)
     deploy:
       resources:
         limits:
-          memory: 18g
-          cpus: '6.0'
+          memory: 20g
+          cpus: '3.5'
         reservations:
-          memory: 12g
-          cpus: '3.0'
+          memory: 10g
+          cpus: '2.0'
     
     # Ports
     ports:

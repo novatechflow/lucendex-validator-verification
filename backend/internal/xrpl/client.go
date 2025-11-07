@@ -1,11 +1,14 @@
 package xrpl
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -390,7 +393,7 @@ func (c *Client) FetchLedgerSync(ledgerIndex uint64) (*LedgerResponse, error) {
 	}
 }
 
-// GetServerInfo requests server information
+// GetServerInfo requests server information via WebSocket (DEPRECATED - use GetServerInfoHTTP)
 func (c *Client) GetServerInfo() (*ServerInfoResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -419,6 +422,37 @@ func (c *Client) GetServerInfo() (*ServerInfoResponse, error) {
 	}
 	
 	return &resp, nil
+}
+
+// GetServerInfoHTTP requests server information via HTTP RPC (avoids WebSocket conflict)
+func GetServerInfoHTTP(rpcURL string) (*ServerInfoResponse, error) {
+	reqBody := map[string]interface{}{
+		"method": "server_info",
+		"params": []interface{}{},
+	}
+	
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	
+	resp, err := http.Post(rpcURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	
+	var serverInfo ServerInfoResponse
+	if err := json.Unmarshal(body, &serverInfo); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	
+	return &serverInfo, nil
 }
 
 // Helper function
