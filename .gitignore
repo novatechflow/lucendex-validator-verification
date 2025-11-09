@@ -1,21 +1,36 @@
-# Binaries
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-bin/
-dist/
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
 
-# Go
-*.test
-*.out
-vendor/
-go.work
+# Thumbnails
+._*
 
-# Test coverage
-coverage.out
-*.coverprofile
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.nfs*
 
 # IDE
 .vscode/
@@ -24,61 +39,25 @@ coverage.out
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
-
 # Logs
 *.log
-
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# Secrets
-secrets/
-*.key
-*.pem
-*.crt
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Node (if React frontend)
-node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# Build outputs
-build/
-dist/
-out/
-
-# Temporary files
-tmp/
-temp/
+# Temp files
 *.tmp
+*.temp
 
-# Infrastructure (Terraform & secrets)
-infra/*/terraform/.terraform/
-infra/*/terraform/.terraform.lock.hcl
-infra/*/terraform/*.tfstate
-infra/*/terraform/*.tfstate.backup
-infra/*/terraform/tfplan
-infra/*/terraform/.envrc
-infra/*/terraform/*_ssh_key
-infra/*/terraform/*_ssh_key.pub
-infra/*/backups/
-infra/*/.envrc.cloudflare
-infra/*/lucendex-validator-verification/
+# Large media files (host externally)
+media/
+*.mp4
+*.mov
+*.avi
+*.mkv
 
-# Validator keys and tokens
+# Secrets and credentials (local backup only, never push)
+.secrets/
 *.key
-*.token
-validator-keys.json
-backend/indexer
+*.pem
+*.env.local

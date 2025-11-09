@@ -1,4 +1,0 @@
-# XRPL Mainnet Validators
-# Using validator_list_sites for auto-updating UNL
-# See rippled.cfg for configuration
-[validators]

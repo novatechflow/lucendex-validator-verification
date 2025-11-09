@@ -1,0 +1,13 @@
+# Lucendex XRPL Validator Domain Verification
+# Deploy to: https://lucendex.com/.well-known/xrp-ledger.toml
+
+[[VALIDATORS]]
+public_key = "nHURxHJWaupHUKEXqEk1sbuYRUsnUsG7gFdDMQg7qit8QJ7fw8ZG"
+attestation = "430BBCE02DF4F0CE754425E41F8711450D542A204312F35E1628C0B761EA1CC144AB4C64D544E7E798ADD3A409ABC803DE193CA95D8468BDD09907A91D56050F"
+network = "main"
+owner_country = "MT"
+server_country = "NL"
+
+[[PRINCIPALS]]
+name = "Lucendex"
+domain = "lucendex.com"
