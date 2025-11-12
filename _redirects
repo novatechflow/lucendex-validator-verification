@@ -1,0 +1,10 @@
+# _redirects (no extension, plain text)
+# Clean up old .html docs permanently
+/docs/api.html          /docs/api         301
+/docs/indexer.html      /docs/indexer     301
+/docs/compliance.html   /docs/compliance  301
+
+# Optional: Catch any stray .html site-wide (if you have more)
+/*.html                 /:splat           301
+
+# Fallback for SPA if needed (/* /index.html 200) — add if you have client routing

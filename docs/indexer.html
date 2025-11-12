@@ -9,7 +9,7 @@
   <meta name="description"
     content="Technical documentation for LucenDEX XRPL indexer: architecture, gap detection, backfill strategy, performance metrics, and data model." />
   <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="https://lucendex.com/docs/indexer.html" />
+  <link rel="canonical" href="https://lucendex.com/docs/indexer/" />
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 
@@ -260,19 +260,20 @@
 
       <h3>Core Capabilities</h3>
       <ul>
-        <li><strong>Real-time streaming</strong>: WebSocket connection to rippled full-history node</li>
-        <li><strong>Transaction filtering</strong>: Processes only <code>AMMCreate</code>, <code>AMMDeposit</code>, <code>AMMWithdraw</code>, <code>OfferCreate</code>, <code>OfferCancel</code></li>
+        <li><strong>Real-time streaming</strong>: WebSocket connection to rippled API node (256 ledger history)</li>
+        <li><strong>Transaction filtering</strong>: Processes AMM and orderbook transactions</li>
         <li><strong>State management</strong>: Current AMM reserves and active orderbook offers</li>
-        <li><strong>Gap detection</strong>: Smart backfill for small gaps (&lt;1000 ledgers), skip large gaps</li>
+        <li><strong>Trade tracking</strong>: Records Lucendex-executed trades via QuoteHash in memo</li>
+        <li><strong>Gap detection</strong>: Smart backfill for small gaps (within 256-ledger buffer)</li>
       </ul>
 
       <h2>What Gets Indexed</h2>
       <div class="alert alert-success">
-        <strong>✓ Indexed (DEX Transactions Only)</strong>
+        <strong>✓ Indexed</strong>
         <ul class="mb-0 mt-2">
-          <li>AMM pool operations (create, deposit, withdraw)</li>
-          <li>Orderbook offers (create, cancel)</li>
-          <li>Current liquidity state and prices</li>
+          <li><strong>Current State</strong>: AMM pool reserves (all pools on XRPL)</li>
+          <li><strong>Current State</strong>: Active orderbook offers (all offers on XRPL)</li>
+          <li><strong>Lucendex Trades</strong>: Completed trades with QuoteHash in memo (90-day retention)</li>
         </ul>
       </div>
 
@@ -319,19 +320,19 @@
       <h2>Gap Detection Strategy</h2>
       <p>On restart, the indexer checks for missing ledgers between the last processed ledger and current validated ledger:</p>
 
-      <h3>Small Gaps (&lt;1000 ledgers)</h3>
+      <h3>Small Gaps (within 256-ledger buffer)</h3>
       <p>Backfill sequentially to maintain continuity. Typical case after short downtime.</p>
-      <pre><code>Gap detected: 491 ledgers (100021434 → 100021925)
-Backfilling: 491 ledgers
-Backfill: 100/491 (20.4%) - ETA: 3m7s</code></pre>
+      <pre><code>Gap detected: 100 ledgers (within API node history)
+Backfilling: 100 ledgers
+Backfill: 50/100 (50%) - ETA: 1m30s</code></pre>
 
-      <h3>Large Gaps (≥1000 ledgers)</h3>
-      <p>Skip backfill and resume from current ledger. Historical data isn't needed for DEX routing—only current state matters.</p>
-      <pre><code>Large gap detected: 5000 ledgers - skipping backfill
+      <h3>Large Gaps (&gt;256 ledgers)</h3>
+      <p>Skip backfill and resume from current ledger. Historical data isn't needed—only current state matters.</p>
+      <pre><code>Large gap detected: 2000 ledgers (> API node retention)
 Resuming from current ledger: 100025000</code></pre>
 
       <div class="alert alert-info">
-        <strong>Why skip large gaps?</strong> DEX routing only needs <em>current</em> liquidity state. Old AMM reserves and cancelled offers are irrelevant. State rebuilds quickly from live stream.
+        <strong>Why skip large gaps?</strong> DEX routing only needs <em>current</em> liquidity state (AMM reserves, active offers). State rebuilds quickly from live stream. Completed Lucendex trades are stored with 90-day retention.
       </div>
 
       <h2>Performance Metrics</h2>
@@ -350,7 +351,7 @@ Resuming from current ledger: 100025000</code></pre>
         </tr>
         <tr>
           <td><strong>CPU Usage</strong></td>
-          <td>&lt;1% (6 vCPU VM)</td>
+          <td>&lt;1% (16 vCPU VM)</td>
         </tr>
         <tr>
           <td><strong>Database Connections</strong></td>
@@ -389,6 +390,14 @@ DO UPDATE SET
       </ul>
 
       <h2>Version History</h2>
+      <p><strong>v1.1.0</strong> (2025-11-11):</p>
+      <ul>
+        <li>Single API node architecture (256 ledger history)</li>
+        <li>Trade tracking with QuoteHash detection</li>
+        <li>completed_trades table with 90-day retention</li>
+        <li>Optimized for reduced resource usage</li>
+      </ul>
+
       <p><strong>v1.0.0-alpha</strong> (2025-11-06):</p>
       <ul>
         <li>Initial production release</li>

@@ -14,3 +14,12 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
   X-XSS-Protection: 1; mode=block
+
+/*
+  Link: <https://lucendex.com/>; rel="canonical"
+
+/docs/*
+  Link: <https://lucendex.com/docs/>; rel="canonical"
+
+/docs/api/
+  Link: <https://lucendex.com/docs/api/>; rel="canonical"
