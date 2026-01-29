@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Primary Meta Tags -->
-  <title>LucenDEX - Deterministic Execution Infrastructure for XRPL Trading</title>
-  <meta name="title" content="LucenDEX - Deterministic Execution Infrastructure for XRPL Trading" />
+  <title>LucenDEX — Enterprise DEX Infrastructure for XRPL</title>
+  <meta name="title" content="LucenDEX — Enterprise DEX Infrastructure for XRPL" />
   <meta name="description"
-    content="Non-custodial XRPL execution layer with deterministic quote binding and circuit breakers. Built for wallets, fintechs, and institutions." />
+    content="Non-custodial, deterministic routing and settlement infrastructure for XRPL. Built for wallets, fintechs, and institutions." />
   <meta name="keywords"
     content="XRPL, DEX infrastructure, non-custodial trading, deterministic execution, DeFi, blockchain infrastructure, crypto trading API" />
   <meta name="robots" content="index, follow" />
@@ -25,9 +25,9 @@
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://lucendex.com/" />
-  <meta property="og:title" content="LucenDEX - XRPL DEX Infrastructure" />
+  <meta property="og:title" content="LucenDEX — Enterprise DEX Infrastructure for XRPL" />
   <meta property="og:description"
-    content="Non-custodial, deterministic execution layer for XRPL trading. Infrastructure-grade routing and settlement for wallets, fintechs, and institutions." />
+    content="Non-custodial, deterministic routing and settlement infrastructure for XRPL." />
   <meta property="og:image" content="https://lucendex.com/assets/og-image.png" />
   <meta property="og:site_name" content="LucenDEX" />
   <meta property="og:image:width" content="1200" />
@@ -36,9 +36,9 @@
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="https://lucendex.com/" />
-  <meta name="twitter:title" content="LucenDEX - XRPL DEX Infrastructure" />
+  <meta name="twitter:title" content="LucenDEX — Enterprise DEX Infrastructure for XRPL" />
   <meta name="twitter:description"
-    content="Non-custodial, deterministic execution layer for XRPL trading. Built for infrastructure partners." />
+    content="Non-custodial, deterministic routing and settlement infrastructure for XRPL." />
   <meta name="twitter:image" content="https://lucendex.com/assets/twitter-image.png" />
 
   <!-- Performance hints -->
@@ -62,7 +62,7 @@
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "LucenDEX",
-    "description": "Non-custodial execution infrastructure for XRPL trading",
+    "description": "Non-custodial, deterministic routing and settlement infrastructure for XRPL",
     "url": "https://lucendex.com/",
     "logo": "https://lucendex.com/assets/logo.png",
     "foundingDate": "2025",
@@ -82,7 +82,7 @@
     "name": "LucenDEX Routing Engine",
     "applicationCategory": "FinanceApplication",
     "operatingSystem": "XRPL",
-    "description": "Deterministic routing and execution infrastructure for XRPL DEX",
+    "description": "Deterministic routing and settlement infrastructure for XRPL",
     "offers": {
       "@type": "Offer",
       "price": "0",
@@ -109,7 +109,7 @@
         "name": "What is LucenDEX?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "LucenDEX is a neutral, non-custodial execution layer for XRPL trading. We provide deterministic routing, quoting, and settlement infrastructure that wallets, fintechs, and institutions can integrate to access deep XRPL liquidity without building DEX infrastructure themselves."
+          "text": "LucenDEX is enterprise DEX infrastructure for XRPL — non-custodial, deterministic routing and settlement that wallets, fintechs, and institutions integrate instead of building from scratch."
         }
       },
       {
@@ -467,6 +467,7 @@
         <ul class="navbar-nav ms-auto">
           <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
           <li class="nav-item"><a class="nav-link" href="#use-cases">Use Cases</a></li>
+          <li class="nav-item"><a class="nav-link" href="#roadmap">Roadmap</a></li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="docsDropdown" role="button" data-bs-toggle="dropdown">
               Docs
@@ -493,52 +494,67 @@
     <div class="container">
       <div class="row align-items-center">
         <div class="col-lg-12 hero-content">
-          <div class="alert alert-warning mb-4" style="background: rgba(255, 193, 7, 0.2); border-color: rgba(255, 193, 7, 0.5); color: #fff;">
-            <strong>🚧 In Development:</strong> LucenDEX is under active development. API and infrastructure not yet live for production use.
-          </div>
-          <h1>Deterministic Execution Infrastructure for XRPL</h1>
-          <p class="lead">Non-custodial routing and settlement layer built for wallets, fintechs, and institutions.
-            Zero-trust architecture with cryptographic quote binding.</p>
-          <div class="d-flex gap-3 flex-wrap">
-            <button class="btn cta-button cta-primary" onclick="location.href='#partner'">Express Interest</button>
-            <button class="btn cta-button cta-secondary"
-              onclick="window.open('https://github.com/2pk03/LucenDEX/blob/main/white-paper.md', '_blank')">Read
-              Whitepaper</button>
+          <h1>Enterprise DEX Infrastructure for XRPL</h1>
+          <p class="lead mb-2">Non-custodial. Deterministic. Production-ready.</p>
+          <p class="lead">Routing, quoting, and settlement infrastructure that wallets, fintechs, and institutions integrate instead of building from scratch.</p>
+          <div class="row g-3 mt-4">
+            <div class="col-lg-6">
+              <div class="p-4" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 14px;">
+                <h5 class="mb-2 text-white">What's Live Now</h5>
+                <ul class="mb-0 text-white-50">
+                  <li>XRPL Validator — domain verified</li>
+                  <li>Router Engine — 92%+ test coverage, zero data races</li>
+                  <li>Real-time Indexer — AMM + orderbook state synced</li>
+                  <li>Partner API — Q1 2026</li>
+                </ul>
+              </div>
+            </div>
+            <div class="col-lg-6 d-flex align-items-center">
+              <div class="d-flex gap-3 flex-wrap">
+                <button class="btn cta-button cta-primary" onclick="window.open('https://github.com/2pk03/LucenDEX', '_blank')">View on GitHub</button>
+                <button class="btn cta-button cta-secondary" onclick="window.open('https://github.com/2pk03/LucenDEX/blob/main/doc/WhitePaper.md', '_blank')">Read Whitepaper</button>
+                <button class="btn cta-button cta-secondary" onclick="location.href='#partner'">Contact</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Problem Statement -->
+  <!-- Proof Bar -->
   <section class="problem-section">
     <div class="container">
-      <div class="row mb-5">
+      <div class="row mb-4">
         <div class="col-lg-8">
-          <span class="section-tag">The Problem</span>
-          <h2 class="section-title">Centralized Infrastructure Fails Under Stress</h2>
-          <p class="lead" style="color: var(--text-light);">The October 10, 2025 crash exposed systemic fragilities in
-            centralized exchange infrastructure. When markets moved, discretionary control and opaque risk models
-            created cascading failures.</p>
+          <span class="section-tag">Proof of Work</span>
+          <h2 class="section-title">What’s Shipped, Not Promised</h2>
+          <p class="lead" style="color: var(--text-light);">LucenDEX is infrastructure-first: validator live, router shipped, indexer running.</p>
         </div>
       </div>
       <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="stat-box">
-            <div class="stat-number">$19B</div>
-            <div class="stat-label">Liquidated in 24 Hours</div>
+            <div class="stat-number">92%+</div>
+            <div class="stat-label">Router Test Coverage</div>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="stat-box">
-            <div class="stat-number">1.6M</div>
-            <div class="stat-label">Accounts Affected</div>
+            <div class="stat-number">35</div>
+            <div class="stat-label">Validators in UNL</div>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="stat-box">
-            <div class="stat-number">$283M</div>
-            <div class="stat-label">In Reimbursements Required</div>
+            <div class="stat-number">4,200+</div>
+            <div class="stat-label">Lines of Go</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-box">
+            <div class="stat-number">MIT</div>
+            <div class="stat-label">Open Source</div>
           </div>
         </div>
       </div>
@@ -550,63 +566,117 @@
     <div class="container">
       <div class="row align-items-center g-5">
         <div class="col-lg-6">
-          <span class="section-tag">Core Capabilities</span>
-          <h2 class="section-title">Built for Infrastructure Partners</h2>
-          <p class="lead text-muted mb-4">Enterprise-grade execution layer with deterministic guarantees</p>
+          <span class="section-tag">What We've Shipped</span>
+          <h2 class="section-title">Deployed Infrastructure, Not Slides</h2>
+          <p class="lead text-muted mb-4">LucenDEX is built to be integrated, audited, and trusted by partners.</p>
           <div class="feature-list">
             <div class="feature-item mb-4">
               <div class="d-flex align-items-start">
-                <div class="feature-icon-small me-3">🔒</div>
+                <div class="feature-icon-small me-3">🟢</div>
                 <div>
-                  <h4 class="mb-2">Non-Custodial</h4>
-                  <p class="text-muted mb-0">Zero custody risk. Backend never sees private keys. All transactions signed
-                    client-side. <a href="/docs/compliance.html" class="text-primary">Learn about compliance →</a></p>
+                  <h4 class="mb-2">XRPL Validator (Live)</h4>
+                  <p class="text-muted mb-0">Domain-verified validator contributing to network consensus. <a href="/infrastructure" class="text-primary">Infrastructure details →</a></p>
                 </div>
               </div>
             </div>
             <div class="feature-item mb-4">
               <div class="d-flex align-items-start">
-                <div class="feature-icon-small me-3">⚡</div>
+                <div class="feature-icon-small me-3">🟢</div>
                 <div>
-                  <h4 class="mb-2">Deterministic Execution</h4>
-                  <p class="text-muted mb-0">QuoteHash = blake2b-256(params + fees + TTL). Cryptographically bound
-                    quotes. <a href="/docs/api.html" class="text-primary">View API docs →</a></p>
+                  <h4 class="mb-2">Router Engine (Complete)</h4>
+                  <p class="text-muted mb-0">Deterministic pathfinding with QuoteHash binding, replay prevention, and circuit breakers.</p>
                 </div>
               </div>
             </div>
             <div class="feature-item mb-4">
               <div class="d-flex align-items-start">
-                <div class="feature-icon-small me-3">🛡️</div>
+                <div class="feature-icon-small me-3">🟢</div>
                 <div>
-                  <h4 class="mb-2">Circuit Breakers</h4>
-                  <p class="text-muted mb-0">Real-time sanity checks and price anomaly detection.</p>
+                  <h4 class="mb-2">Real-time Indexer (Complete)</h4>
+                  <p class="text-muted mb-0">Streams AMM + orderbook state into PostgreSQL with TLS and audit logging.</p>
                 </div>
               </div>
             </div>
             <div class="feature-item">
               <div class="d-flex align-items-start">
-                <div class="feature-icon-small me-3">🔄</div>
+                <div class="feature-icon-small me-3">🔜</div>
                 <div>
-                  <h4 class="mb-2">Multi-Route Liquidity</h4>
-                  <p class="text-muted mb-0">Aggregate AMM and orderbook liquidity with path splitting. <a href="/docs/indexer.html" class="text-primary">Indexer architecture →</a></p>
+                  <h4 class="mb-2">Partner API (Q1 2026)</h4>
+                  <p class="text-muted mb-0">Ed25519 request signing, quotas, metering, and SLAs.</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div class="col-lg-6">
-          <div class="video-card text-center">
-            <blockquote class="twitter-tweet" data-media-max-width="560">
-              <p lang="zxx" dir="ltr"><a href="https://t.co/G77s25HXM4">pic.twitter.com/G77s25HXM4</a></p>&mdash;
-              LucenDEX (@lucendex) <a
-                href="https://twitter.com/lucendex/status/1984555508636803144?ref_src=twsrc%5Etfw">November 1, 2025</a>
-            </blockquote>
-            <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-            <noscript>
-              <p class="text-muted mb-0">Tweet preview unavailable without JavaScript. View it on X: <a
-                  href="https://twitter.com/lucendex/status/1984555508636803144" target="_blank"
-                  rel="noopener">twitter.com/lucendex/status/1984555508636803144</a></p>
-            </noscript>
+          <div class="use-case-card mb-3">
+            <h4>Deterministic Execution</h4>
+            <p class="text-muted mb-0">blake2b-256 QuoteHash binds price, route, fees, and TTL. Execution must match or fail.</p>
+          </div>
+          <div class="use-case-card mb-3">
+            <h4>Enterprise Security</h4>
+            <p class="text-muted mb-0">mTLS between services, strict validation, and audit-grade logging without PII.</p>
+          </div>
+          <div class="use-case-card mb-3">
+            <h4>Multi-Route Liquidity</h4>
+            <p class="text-muted mb-0">AMM + orderbook aggregation with path splitting and circuit breakers.</p>
+          </div>
+          <div class="use-case-card">
+            <h4>Open Source</h4>
+            <p class="text-muted mb-0">MIT licensed infrastructure. <a href="https://github.com/2pk03/LucenDEX" class="text-primary">View code →</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Not Native Pathfinding -->
+  <section id="why-not-native" class="py-5" style="background: #fff;">
+    <div class="container">
+      <div class="text-center mb-5">
+        <span class="section-tag">Differentiation</span>
+        <h2 class="section-title">Why Not Native <code>path_find</code>?</h2>
+        <p class="lead text-muted">Native pathfinding is a primitive. LucenDEX is infrastructure.</p>
+      </div>
+      <div class="row">
+        <div class="col-lg-10 mx-auto">
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Capability</th>
+                  <th>Native <code>path_find</code></th>
+                  <th>LucenDEX</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Circuit breakers</td>
+                  <td>❌</td>
+                  <td>✅ Price anomaly detection + auto-pause</td>
+                </tr>
+                <tr>
+                  <td>Quote binding</td>
+                  <td>❌</td>
+                  <td>✅ blake2b-256 QuoteHash</td>
+                </tr>
+                <tr>
+                  <td>Replay prevention</td>
+                  <td>❌</td>
+                  <td>✅ used_quotes tracking</td>
+                </tr>
+                <tr>
+                  <td>Rate limits + SLAs</td>
+                  <td>❌</td>
+                  <td>✅ Per-partner quotas + metering</td>
+                </tr>
+                <tr>
+                  <td>Compliance audit trail</td>
+                  <td>❌</td>
+                  <td>✅ 90-day retention, no PII</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -958,6 +1028,67 @@
     </div>
   </section>
 
+  <!-- Roadmap Section -->
+  <section id="roadmap" class="py-5" style="background: #f8fafc;">
+    <div class="container">
+      <div class="text-center mb-5">
+        <span class="section-tag">Roadmap</span>
+        <h2 class="section-title">Milestones & Status</h2>
+        <p class="lead text-muted">Clear delivery stages with completion status.</p>
+      </div>
+      <div class="row">
+        <div class="col-lg-10 mx-auto">
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Milestone</th>
+                  <th>Status</th>
+                  <th>What’s Included</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>M0: Infrastructure</td>
+                  <td>✅ Complete</td>
+                  <td>rippled nodes, PostgreSQL, indexer streaming</td>
+                </tr>
+                <tr>
+                  <td>M1: Router Engine</td>
+                  <td>✅ Complete</td>
+                  <td>Pathfinding, QuoteHash, circuit breakers, 92%+ coverage</td>
+                </tr>
+                <tr>
+                  <td>M2: Public API</td>
+                  <td>🔜 Q1 2026</td>
+                  <td>REST endpoints, demo UI, wallet integration</td>
+                </tr>
+                <tr>
+                  <td>M3: Partner API</td>
+                  <td>🔜 Q1 2026</td>
+                  <td>Ed25519 auth, rate limits, metering, SLAs</td>
+                </tr>
+                <tr>
+                  <td>M4: Validator</td>
+                  <td>✅ Live</td>
+                  <td>Domain-verified validator, monitoring</td>
+                </tr>
+                <tr>
+                  <td>M5: Pilot Partners</td>
+                  <td>🔜 Q2 2026</td>
+                  <td>First production integrations</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="alert alert-info text-center mt-4" role="alert">
+            <strong>XRPL 3.1.0:</strong> LendingProtocol (XLS-66) is being evaluated for Phase 2 margin workflows.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- FAQ Section (on-page copy matches JSON-LD) -->
   <section id="faq" class="faq-section">
     <div class="container">
@@ -975,9 +1106,8 @@
               </h2>
               <div id="collapse1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
                 <div class="accordion-body">
-                  LucenDEX is a neutral, non-custodial execution layer for XRPL trading. We provide deterministic
-                  routing, quoting, and settlement infrastructure that wallets, fintechs, and institutions can integrate
-                  to access deep XRPL liquidity without building DEX infrastructure themselves.
+                  LucenDEX is enterprise DEX infrastructure for XRPL — non-custodial, deterministic routing and settlement
+                  that wallets, fintechs, and institutions integrate instead of building from scratch.
                 </div>
               </div>
             </div>
@@ -1043,11 +1173,11 @@
     <div class="container">
       <div class="row justify-content-center">
         <div class="col-lg-8 text-center">
-          <h2>Interested in Early Partnership?</h2>
-          <p class="lead mb-3">We're building deterministic infrastructure for XRPL. Currently in development.</p>
-          <p class="mb-4"><small>API not yet available for production use. Expressing interest helps us understand market demand.</small></p>
+          <h2>Build on LucenDEX</h2>
+          <p class="lead mb-3">Infrastructure-first XRPL execution for wallets, fintechs, and trading teams.</p>
+          <p class="mb-4"><small>Early integration slots available for Q2 2026 pilots.</small></p>
           <div class="d-flex gap-3 justify-content-center flex-wrap">
-            <button class="btn cta-button cta-primary btn-lg" onclick="openContactModal()">Express Interest</button>
+            <button class="btn cta-button cta-primary btn-lg" onclick="openContactModal()">Contact for Partnership</button>
             <button class="btn cta-button cta-secondary btn-lg"
               onclick="window.open('https://x.com/LucenDEX', '_blank')">Follow on X</button>
           </div>
@@ -1146,7 +1276,7 @@
             <span style="color: rgba(255,255,255,0.3);"> · </span>
             <a href="https://github.com/2pk03/lucendex" class="footer-link" target="_blank" rel="noopener">GitHub</a>
             <span style="color: rgba(255,255,255,0.3);"> · </span>
-            &copy; 2025 LucenDEX
+            &copy; 2026 LucenDEX
           </p>
         </div>
       </div>
